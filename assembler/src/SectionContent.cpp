@@ -27,7 +27,7 @@ void SectionContent::addByte(char byte) {
 void SectionContent::writeInFile(string name) {
 	ofstream file;
 
-	file.open(name);
+	file.open(name, std::ios::app);
 
 	int count = 0;
 	const int BYTES_PER_LINE = 16;

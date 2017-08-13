@@ -8,6 +8,7 @@
 #include "SectionContent.h"
 #include "Section.h"
 #include "Symbol.h"
+#include "Reader.h"
 
 using namespace std;
 
@@ -15,7 +16,7 @@ class Assembler {
 public:
 	//	Constructor
 	Assembler(string inputFileName, string outputFileName);
-	
+
 	//	Destructor
 	~Assembler();
 
@@ -27,12 +28,18 @@ public:
 
 	//	Reset all sections counters
 	void resetSectionCounters();
+
+	//	Check if section exists in section content array
+	bool sectionExists(Section section);
+
 private:
 	string inputFileName;
 	string outputFileName;
 
 	vector<RelocationTable> relocationTableArray;
 	vector<SectionContent> sectionContentArray;
+
+	Reader *reader;
 
 	SymbolTable symbolTable;
 };

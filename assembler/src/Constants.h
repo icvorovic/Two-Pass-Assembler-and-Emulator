@@ -25,7 +25,7 @@ const regex REGEX_ADDR_MODE_IMMEDIATE("#[\\w]+");
 const regex REGEX_ADDR_MODE_REG_DIR("(R([0-9]{1}$|1[0-5])|PC|SP){1}");
 const regex REGEX_ADDR_MODE_MEM_DIR("[a-z|A-Z|_][a-zA-Z0-9_]+");
 const regex REGEX_ADDR_MODE_REG_IND("\\[(R([0-9]{1}|1[0-5])|PC|SP){1}\\]");
-const regex REGEX_ADDR_MODE_REG_IND_DISP("\\[(R([0-9]{1}|1[0-5])|PC|SP){1}\\s\\+\\s[0-9]+\\]");
+const regex REGEX_ADDR_MODE_REG_IND_DISP("\\[(R([0-9]{1}|1[0-5])|PC|SP){1}(\\s)*\\+(\\s)*[0-9]+\\]");
 const regex REGEX_ADDR_MODE_DOLLAR_PC("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
 /*
 *	Array contains all section types used in assembly language.
@@ -74,6 +74,13 @@ const int CONTROL_FLOW_INST_SIZE = 8;
 const int LOAD_STORE_INST_SIZE = 8;
 const int STACK_INST_SIZE = 4;
 const int ARITM_LOGIC_INST_SIZE = 4;
+
+const int OPCODE_OFFSET = 24;
+const int ADDR_MODE_OFFSET = 21;
+const int REG0_OFFSET = 16;
+const int REG1_OFFSET = 15;
+const int REG2_OFFSET = 6;
+const int TYPE_OFFSET = 3;
 
 extern map<string, int> registerCodes;
 

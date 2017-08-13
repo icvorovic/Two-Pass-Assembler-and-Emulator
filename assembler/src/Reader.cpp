@@ -23,13 +23,18 @@ string Reader::readNextLine() {
 		
 		fileStream.clear();
 		fileStream.seekg(0, ios::beg);
-
+	
 		return string();
 	}
 
 	string str;
 
 	getline(fileStream, str);
+
+	if (!str.compare(".end")) {
+		fileStream.clear();
+		fileStream.seekg(0, ios::beg);
+	}
 
 	return str;
 }

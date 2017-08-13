@@ -11,4 +11,6 @@ string byteToHexString(char byte);
 
 bool isFileExists(string fileName);
 
+string longlongToHexString(unsigned long long decimal, int b);
+
 #endif

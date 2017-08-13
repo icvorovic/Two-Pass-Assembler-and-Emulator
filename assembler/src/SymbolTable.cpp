@@ -17,7 +17,7 @@ void SymbolTable::addSymbol(SymbolTableEntry &symbolEntry) {
 void SymbolTable::writeToFile(string name) {
 	ofstream file;
 
-	file.open(name);
+	file.open(name, std::ios::app);
 
 	file << "#TabelaSimbola" << endl;
 

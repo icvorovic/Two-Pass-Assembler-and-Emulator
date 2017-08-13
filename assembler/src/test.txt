@@ -1,0 +1,57 @@
+ORG 0x0000
+.rodata
+ivt: DD 3 DUP 0x00 , prekid3 , prekid4 , prekid5 , 26 DUP 0
+output: DB 0
+input: DB 0
+time: DD 0
+.data
+buffer: DB 100 DUP 0
+end_b:
+.text.1
+_start:
+JMP [R5 + 900]
+LOAD R1, #buffer ; pokazivac na pocetak bafera
+LOAD R2, #1 ; inkrement
+LOAD R3, #end_b ; pokazivac na kraj bafera
+loop:
+LOADUB R4, input 
+JMP [R4]
+JZ R4, loop 
+STOREB R4, [R1] ; ubaci u bafer
+LOAD R4, #0 ; 
+STOREB R4, input ; ovo je samo za testiranje char po char
+ADD R1, R1, R2 ; inc 
+SUB R5, R3, R1 ; end_b - buffer, provjera kraja
+JNZ R5, loop
+LOAD R1, #buffer ; za ispis
+loop_out: 
+LOADUB R5, [R1] ; citaj iz bafera
+STOREB R5, output
+LOAD R0, #6 ; broj prekida za ispis u registru R0
+INT 0 ; sistemski poziv za ispis, emulator treba da vidi vrijednost 6 u registru R0
+ADD R1, R1, R2
+SUB R5, R3, R1 ; end_b - buffer
+JNZ R5, $loop_out
+LOAD R0, #0 ; broj prekida u R0
+INT 0 ; kraj programa, emulator procita R0, jer je OP = 0, a u njemu je 0, sto znaci kraj.
+.text.2
+prekid5:
+POP R10 ; emulator pozove ovo cudo, a ona nit ce da stavi na stek, posto moze da dohvati adresu steka iz IVT ulaz 0
+STOREB R10, input
+RTI
+prekid3:
+LOAD R0, #0
+INT 0 ; u slucaju greske, samo zavrsi program
+prekid4: 
+PUSH R10 ; ovo se izvrsava na svakih 0.1s
+PUSH R11
+LOAD R10, time 
+LOAD R11, #1 
+ADD R10, R10, R11
+STORE R10, time
+POP R11
+POP R10
+RTI
+.end
+
+
