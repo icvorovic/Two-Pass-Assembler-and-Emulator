@@ -13,4 +13,6 @@ bool isFileExists(string fileName);
 
 string longlongToHexString(unsigned long long decimal, int b);
 
+string infixToPostfixExpression(string infix);
+
 #endif

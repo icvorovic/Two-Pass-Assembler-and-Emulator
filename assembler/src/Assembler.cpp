@@ -453,10 +453,48 @@ bool Assembler::secondPass() {
 					currentSection.incrementLocationCounterBy(LOAD_STORE_INST_SIZE);
 				}
 				else if (reader->isStackInstruction(instruction)) {
+					addressModeCode = REG_DIR_ADDR_MODE;
+
+					regex rgx("((R[0-9]{1}|1[0-5])|PC|SP){1}");
+					smatch match;
+					
+					const string str = arguments.at(0);
+					string registerOperand = "";
+
+					if (regex_search(str.begin(), str.end(), match, rgx))
+						registerOperand = match[1];
+
+					firstRegisterCode = registerCodes[registerOperand];
 
 					currentSection.incrementLocationCounterBy(STACK_INST_SIZE);
 				}
 				else if (reader->isAritmeticLogicInstruction(instruction)) {
+					addressModeCode = REG_DIR_ADDR_MODE;
+					
+					regex rgx("((R[0-9]{1}|1[0-5])|PC|SP){1}");
+					smatch match;
+					
+					const string firstArgument = arguments.at(0);
+					string registerOperand = "";
+
+					if (regex_search(firstArgument.begin(), firstArgument.end(), match, rgx))
+						registerOperand = match[1];
+
+					firstRegisterCode = registerCodes[registerOperand];
+
+					const string secondArgument = arguments.at(1);
+				
+					if (regex_search(firstArgument.begin(), firstArgument.end(), match, rgx))
+						registerOperand = match[1];
+
+					firstRegisterCode = registerCodes[registerOperand];
+
+					const string thirdArgument = arguments.at(2);
+					
+					if (regex_search(firstArgument.begin(), firstArgument.end(), match, rgx))
+						registerOperand = match[1];
+
+					firstRegisterCode = registerCodes[registerOperand];
 
 					currentSection.incrementLocationCounterBy(ARITM_LOGIC_INST_SIZE);
 				}
