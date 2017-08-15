@@ -12,7 +12,12 @@ int main(int argc, char** args) {
 	//as->firstPass();
 	//as->secondPass();
 
-	cout << infixToPostfixExpression(string("A+B/(C-D)"));
+	string infix;
 
+	cin >> infix;
+
+	vector<string> postfix =  infixToPostfixExpression(infix);
+
+	cout << "rezultat" << evaluateExpression(postfix) << endl;
 	//delete as;
 }

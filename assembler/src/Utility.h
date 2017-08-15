@@ -2,6 +2,7 @@
 #define _UTILITY_H_
 
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -13,6 +14,8 @@ bool isFileExists(string fileName);
 
 string longlongToHexString(unsigned long long decimal, int b);
 
-string infixToPostfixExpression(string infix);
+vector<string> infixToPostfixExpression(string infix);
+
+int evaluateExpression(vector<string> postfix);
 
 #endif
