@@ -7,17 +7,10 @@
 using namespace std;
 
 int main(int argc, char** args) {
-	//Assembler *as = new Assembler("test.txt", "blabla.txt");
+	Assembler *as = new Assembler("test.txt", "blabla.txt");
 
-	//as->firstPass();
-	//as->secondPass();
-
-	string infix;
-
-	cin >> infix;
-
-	vector<string> postfix =  infixToPostfixExpression(infix);
-
-	cout << "rezultat" << evaluateExpression(postfix) << endl;
-	//delete as;
+	as->firstPass();
+	as->secondPass();
+	
+	delete as;
 }

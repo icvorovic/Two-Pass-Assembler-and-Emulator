@@ -85,8 +85,6 @@ vector<string> infixToPostfixExpression(string infix) {
 
 	stringstream ss;
 
-	cout << "LEN: " << infix.length() << endl;
-
 	string number = "";
 	string operand = "";
 	

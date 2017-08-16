@@ -400,7 +400,7 @@ bool Assembler::secondPass() {
 								addressModeCode = REG_IND_ADDR_MODE;
 							}
 							else if (regex_match(*it, REGEX_ADDR_MODE_REG_IND_DISP)) {
-								regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}(\\s)*\\+(\\s)*([0-9]+)\\]");
+								regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}(\\s)*\\+(\\s)*(.*)\\]");
 								smatch match;
 
 								const string str = *it;
@@ -411,7 +411,28 @@ bool Assembler::secondPass() {
 									registerOperand = match[1];
 									displacement = match[5];
 								}
+								
+								cout << "REG" << registerOperand << " " << displacement << endl;
+								
+								string infix;
+								vector<string> postfix;
+								string symbol;
 
+								const string stringDisplacement = displacement;
+																
+stop:							if (regex_search(stringDisplacement.begin(), stringDisplacement.end(), match, REGEX_CONST_EXPRESSION)) {
+									symbol = match [1];
+									infix = match [4];
+								}
+
+								cout << "DISPLACEMENT: " << symbol << " " << infix << endl;
+
+								postfix = infixToPostfixExpression(infix);
+
+								int result = evaluateExpression(postfix);
+								
+								cout << "RESULT" << result << endl;
+								
 								firstRegisterCode = registerCodes[registerOperand];
 								addressModeCode = REG_IND_DISP_ADDR_MODE;
 							}
