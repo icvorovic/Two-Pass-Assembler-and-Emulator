@@ -420,7 +420,7 @@ bool Assembler::secondPass() {
 
 								const string stringDisplacement = displacement;
 																
-stop:							if (regex_search(stringDisplacement.begin(), stringDisplacement.end(), match, REGEX_CONST_EXPRESSION)) {
+								if (regex_search(stringDisplacement.begin(), stringDisplacement.end(), match, REGEX_CONST_EXPRESSION)) {
 									symbol = match [1];
 									infix = match [4];
 								}
@@ -437,7 +437,7 @@ stop:							if (regex_search(stringDisplacement.begin(), stringDisplacement.end(
 								addressModeCode = REG_IND_DISP_ADDR_MODE;
 							}
 							else if (regex_match(*it, REGEX_ADDR_MODE_DOLLAR_PC)) {
-								
+
 							}
 						}
 
@@ -450,19 +450,79 @@ stop:							if (regex_search(stringDisplacement.begin(), stringDisplacement.end(
 						|| !instruction.compare("JLZ")
 						|| !instruction.compare("JLEZ")) {
 
+						string firstArgument = reader->trim(arguments.at(0));
 
-						if (!regex_match(reader->trim(arguments.at(0)), REGEX_ADDR_MODE_REG_DIR)) {
-							cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for first argument." << endl;
-							break;
+						if (regex_match(firstArgument, REGEX_ADDR_MODE_REG_DIR)) {
+							regex rgx("((R[0-9]{1}|1[0-5])|PC|SP){1}");
+							smatch match;
+							
+							const string str = firstArgument;
+							string registerOperand = "";
+
+							if (regex_search(str.begin(), str.end(), match, rgx))
+								registerOperand = match[1];
+
+							firstRegisterCode = registerCodes[registerOperand];
+							addressModeCode = REG_DIR_ADDR_MODE;
 						}
 
-						if (!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_MEM_DIR) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND_DISP) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_DOLLAR_PC)) {
+						string secondArgument = reader->trim(arguments.at(1));
 
-							cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for second argument." << endl;
-							break;
+						if (regex_match(secondArgument, REGEX_ADDR_MODE_MEM_DIR)) {
+
+						}
+						else if (regex_match(secondArgument, REGEX_ADDR_MODE_REG_IND) {
+							regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}\\]");
+							smatch match;
+							
+							const string str = secondArgument;
+							string registerOperand = "";
+
+							if (regex_search(str.begin(), str.end(), match, rgx))
+								registerOperand = match[1];
+
+							firstRegisterCode = registerCodes[registerOperand];
+							addressModeCode = REG_IND_ADDR_MODE;
+						}
+						else if (regex_match(secondArgument, REGEX_ADDR_MODE_REG_IND_DISP)) {
+							regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}(\\s)*\\+(\\s)*(.*)\\]");
+							smatch match;
+
+							const string str = secondArgument;
+							string registerOperand = "";
+							string displacement = "";
+
+							if (regex_search(str.begin(), str.end(), match, rgx)) {
+								registerOperand = match[1];
+								displacement = match[5];
+							}
+							
+							cout << "REG" << registerOperand << " " << displacement << endl;
+							
+							string infix;
+							vector<string> postfix;
+							string symbol;
+
+							const string stringDisplacement = displacement;
+															
+							if (regex_search(stringDisplacement.begin(), stringDisplacement.end(), match, REGEX_CONST_EXPRESSION)) {
+								symbol = match [1];
+								infix = match [4];
+							}
+
+							cout << "DISPLACEMENT: " << symbol << " " << infix << endl;
+
+							postfix = infixToPostfixExpression(infix);
+
+							int result = evaluateExpression(postfix);
+							
+							cout << "RESULT" << result << endl;
+							
+							firstRegisterCode = registerCodes[registerOperand];
+							addressModeCode = REG_IND_DISP_ADDR_MODE;
+						}
+						else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
+
 						}
 					}
 
