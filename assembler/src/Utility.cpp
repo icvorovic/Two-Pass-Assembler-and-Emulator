@@ -43,6 +43,20 @@ string longlongToHexString(unsigned long long number, int bytesNumber) {
         return result;
 	}
 	
+bool isOperand(string str){ 
+	if ((str.compare("+")) &&
+		(str.compare("-")) &&
+		(str.compare("*")) &&
+		(str.compare("/")) &&
+		(str.compare("(")) &&
+		(str.compare(")"))) {
+		
+		return true;		
+	}
+	
+	return false;
+}	
+
 vector<string> infixToPostfixExpression(string infix) {
 	map<string, int> inputPriority;
 
@@ -74,7 +88,8 @@ vector<string> infixToPostfixExpression(string infix) {
 	cout << "LEN: " << infix.length() << endl;
 
 	string number = "";
-
+	string operand = "";
+	
 	for (int i = 0; i < infix.length(); i++) {
 		char nextChar = infix.at(i);
 		string next;
@@ -88,18 +103,14 @@ vector<string> infixToPostfixExpression(string infix) {
 		ss << nextChar;
 		ss >> next;
 
-		std::cout << "NEXT : " << next << endl;
-
-		if ((next.compare("+")) &&
-			(next.compare("-")) &&
-			(next.compare("*")) &&
-			(next.compare("/")) &&
-			(next.compare("(")) &&
-			(next.compare(")"))) {
-			postfix.push_back(next);
-			rank++;
+		if (isOperand(next)) {
+			operand += next;
 		}
 		else {
+			postfix.push_back(operand);
+			rank++;
+		    operand = "";
+		
 			while (!stackPost.empty() && (inputPriority[next] <= stackPriority[stackPost.top()])) {
 				str = stackPost.top();
 				stackPost.pop();
@@ -121,7 +132,11 @@ vector<string> infixToPostfixExpression(string infix) {
 			}
 		}
 	}
-
+	
+	if (operand.compare("")) {
+		postfix.push_back(operand);
+		rank++;
+	}
 	while (!stackPost.empty()) {
 		str = stackPost.top();
 		stackPost.pop();
@@ -145,10 +160,7 @@ int evaluateExpression(vector<string> postfix) {
 	for (vector<string>::iterator it = postfix.begin(); it != postfix.end(); ++it) {
 		string next = *it;
 
-		if ((next.compare("+")) &&
-			(next.compare("-")) &&
-			(next.compare("*")) &&
-			(next.compare("/"))) {
+		if (isOperand(next)) {
 			
 			regex binaryNumber("b[0-1]{1,32}");
 			regex hexdecimalNumber("0x([0-9]{1,8})");
@@ -172,10 +184,10 @@ int evaluateExpression(vector<string> postfix) {
 			stackExpression.push(number);
 		}
 		else {
-			int firstOperand = stackExpression.top();
+			int secondOperand = stackExpression.top();
 			stackExpression.pop();
 
-			int secondOperand = stackExpression.top();
+			int firstOperand = stackExpression.top();
 			stackExpression.pop();
 
 			if (!next.compare("+")) {

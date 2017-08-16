@@ -18,4 +18,6 @@ vector<string> infixToPostfixExpression(string infix);
 
 int evaluateExpression(vector<string> postfix);
 
+bool isOperand(string str);
+
 #endif
