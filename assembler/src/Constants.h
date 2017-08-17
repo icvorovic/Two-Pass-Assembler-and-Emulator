@@ -22,10 +22,10 @@ const int IS_ARITM_LOG_OP = 0x30;
  */
 const regex REGEX_LABEL("[a-z|A-Z|_][a-zA-Z0-9_]+:");
 const regex REGEX_ADDR_MODE_IMMEDIATE("\\#([a-z|A-Z|_][a-zA-Z0-9_]+){0,1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
-const regex REGEX_ADDR_MODE_REG_DIR("(R([0-9]{1}$|1[0-5])|PC|SP){1}");
+const regex REGEX_ADDR_MODE_REG_DIR("(R1[0-5]{1}|R[0-9]{1}|PC|SP){1}");
 const regex REGEX_ADDR_MODE_MEM_DIR("[a-z|A-Z|_][a-zA-Z0-9_]+");
-const regex REGEX_ADDR_MODE_REG_IND("\\[(R([0-9]{1}|1[0-5])|PC|SP){1}\\]");
-const regex REGEX_ADDR_MODE_REG_IND_DISP("\\[(R([0-9]{1}|1[0-5])|PC|SP){1}(\\s)*\\+(\\s)*(.*)\\]");
+const regex REGEX_ADDR_MODE_REG_IND("\\[(R1[0-5]{1}|R[0-9]{1}|PC|SP){1}\\]");
+const regex REGEX_ADDR_MODE_REG_IND_DISP("\\[(R1[0-5]{1}|R[0-9]{1}|PC|SP){1}(\\s)*\\+(\\s)*(.*)\\]");
 const regex REGEX_ADDR_MODE_DOLLAR_PC("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
 const regex REGEX_CONST_EXPRESSION("([a-z|A-Z|_][a-zA-Z0-9_]+){0,1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
 
@@ -80,7 +80,7 @@ const int ARITM_LOGIC_INST_SIZE = 4;
 const int OPCODE_OFFSET = 24;
 const int ADDR_MODE_OFFSET = 21;
 const int REG0_OFFSET = 16;
-const int REG1_OFFSET = 15;
+const int REG1_OFFSET = 11;
 const int REG2_OFFSET = 6;
 const int TYPE_OFFSET = 3;
 

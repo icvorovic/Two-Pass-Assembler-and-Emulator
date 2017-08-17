@@ -18,7 +18,7 @@ public:
 	void addByte(char byte);
 
 	//	Write byte vector to file in HEX format
-	void writeInFile(string name);
+	void writeInFile(string sectionName, string name);
 
 private:
 	vector<char> byteContentArray;

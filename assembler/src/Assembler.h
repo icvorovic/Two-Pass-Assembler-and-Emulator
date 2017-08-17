@@ -36,13 +36,20 @@ public:
 	
 	//	Find section by namespace
 	Section* findSectionByName(string name);
+
+	//	Create machine code for register indirect address mode
+	unsigned long createCodeRegisterDirect(vector<string> arguments, int codeInstruction , int type);
+
+	void writeSectionContent(string content);
+
 private:
 	string inputFileName;
 	string outputFileName;
 
-	vector<Section> sectionArray;
+	vector<Section*> sectionArray;
 
 	Reader *reader;
+	Section *currentSection;
 
 	SymbolTable symbolTable;
 };

@@ -29,17 +29,25 @@ bool isFileExists(string fileName) {
 
 string longlongToHexString(unsigned long long number, int bytesNumber) {
 		string result = "";
+
+		cout << "NUMBER " << number << endl;  
 		
         for(int i = 0; i < 2 * bytesNumber; i++){
-            unsigned long long tmp = number & 0xFFFF;
+            unsigned long long tmp = number & 0xF;
 			
 			tmp += tmp >= 10 ? 55 : 48;
 			
 			result = (char)tmp + result;
-	
+
+			cout << "TEMP " << tmp << " RES " << result << endl;
+
 			number >>= 4;
 		}
 		
+		int a;
+
+		cin >> a;
+
         return result;
 	}
 	

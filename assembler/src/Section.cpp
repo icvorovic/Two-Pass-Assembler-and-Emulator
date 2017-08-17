@@ -1,5 +1,8 @@
 #include "Section.h"
 #include "Utility.h"
+#include <iostream>
+
+using namespace std;
 
 Section::Section() {
 	locationCounter = 0;
@@ -77,4 +80,16 @@ void Section::resetLocationCounter() {
 
 unsigned int Section::getLocationCounter() {
 	return locationCounter;
+}
+
+void Section::writeSectionContent(string contentStr) {
+	for (int i = 0; i < 8; i++) {
+		content.addByte(contentStr.at(i));
+		cout << contentStr.at(i) << " ";
+	}
+
+	for (int i = 8; i < contentStr.size(); i++) {
+		content.addByte(contentStr.at(i));
+		cout << contentStr.at(i) << " ";
+	}
 }

@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <regex>
+#include <iostream>
 #include "Constants.h"
 
 using namespace std;
@@ -53,7 +54,7 @@ static bool initializeInstuctionsMap(map<string, int> &instructions) {
 map<string, int> instructions;
 bool initResult = initializeInstuctionsMap(instructions);
 
-static bool initializeRegisterCodesMap(map<string, int>registerCodes) {
+static bool initializeRegisterCodesMap(map<string, int> &registerCodes) {
 	int i;
 
 	for (i = 0; i < 16; i++) {
@@ -62,6 +63,15 @@ static bool initializeRegisterCodesMap(map<string, int>registerCodes) {
 
 	registerCodes["SP"] = 0x10;
 	registerCodes["PC"] = 0x11;
+
+
+    for (map<string, int>::iterator it = registerCodes.begin(); it != registerCodes.end(); ++it) {
+		cout << it->first << " " << it->second << endl;
+	}
+
+	int a;
+
+	cin >> a;
 
 	return true;
 }

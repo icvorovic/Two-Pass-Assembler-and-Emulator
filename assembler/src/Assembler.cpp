@@ -18,14 +18,14 @@ Assembler::~Assembler() {
 }
 
 void Assembler::resetSectionCounters() {
-	for (vector<Section>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
-		it->resetLocationCounter();
+	for (vector<Section*>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
+		(*it)->resetLocationCounter();
 	}
 }
 
 bool Assembler::sectionExists(Section section) {
-	for (vector<Section>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
-		if (!(it->getName()).compare(section.getName())) {
+	for (vector<Section*>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
+		if (!((*it)->getName()).compare(section.getName())) {
 			return true;
 		}
 	}
@@ -33,21 +33,66 @@ bool Assembler::sectionExists(Section section) {
 }
 
 Section* Assembler::findSectionByOrdNumber(unsigned int orderNumber) {
-	for (vector<Section>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
-		if (it->getOrderNumber() == orderNumber) {
-			return &(*it);
+	for (vector<Section*>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
+		if ((*it)->getOrderNumber() == orderNumber) {
+			return *it;
 		}
 	}
 	return nullptr;
 }
 
 Section* Assembler::findSectionByName(string name) {
-	for (vector<Section>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
-		if (!(it->getName()).compare(name)) {
-			return &(*it);
+	for (vector<Section*>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
+		if (!((*it)->getName()).compare(name)) {
+			return *it;
 		}
 	}
 	return nullptr;
+}
+
+void Assembler::writeSectionContent(string content) {
+	currentSection->writeSectionContent(content);
+}
+
+unsigned long Assembler::createCodeRegisterDirect(vector<string> arguments, int instructionCode, int type) {
+	unsigned long addressModeCode = REG_DIR_ADDR_MODE;
+	regex rgx("(R1[0-5]{1}|R[0-9]{1}|PC|SP){1}");
+
+	unsigned long machineCode = 0;
+	unsigned long registerCode = 0;
+	
+	for (int i = 0; i < arguments.size(); i++) {	
+		smatch match;
+		
+		const string str = arguments[i];
+		string registerOperand = "";
+
+		if (regex_search(str.begin(), str.end(), match, rgx))
+			registerOperand = match[1];
+		
+			for (map<string, int>::iterator it = registerCodes.begin(); it != registerCodes.end(); ++it) {
+				cout << it->first << " " << it->second << endl;
+			}
+
+		registerCode = registerCodes.at(registerOperand);
+
+		cout << " REG " << registerOperand << " : " << registerCode << endl;
+
+		int a;
+
+		cin >> a;
+
+
+		machineCode |= (registerCode << (REG0_OFFSET - 5 * i));
+	}
+
+	machineCode |= (instructionCode << OPCODE_OFFSET);
+	machineCode |= (type << TYPE_OFFSET);
+	machineCode |= (addressModeCode << ADDR_MODE_OFFSET);
+
+	cout << "INST" << instructionCode << " ADDR " << addressModeCode << endl;
+
+	return machineCode;
 }
 
 bool Assembler::firstPass() {
@@ -62,8 +107,6 @@ bool Assembler::firstPass() {
 
 	int lineCounter = 1;
 	int orderNumberCounter = 1;
-		
-	Section currentSection;
 	
 	while (1) {
 		cout << "==================================================" << endl;
@@ -108,8 +151,8 @@ bool Assembler::firstPass() {
 					symbol.setType("SYM");
 					symbol.setOrderNumber(orderNumberCounter++);
 					symbol.setName(word.substr(0, word.size() - 1));
-					symbol.setSectionNumber(currentSection.getOrderNumber());
-					symbol.setSectionOffset(currentSection.getLocationCounter());
+					symbol.setSectionNumber(currentSection->getOrderNumber());
+					symbol.setSectionOffset(currentSection->getLocationCounter());
 					
 					symbolTable.addSymbol(symbol);
 				}
@@ -204,7 +247,7 @@ bool Assembler::firstPass() {
 						}
 					}
 
-					currentSection.incrementLocationCounterBy(CONTROL_FLOW_INST_SIZE);
+					currentSection->incrementLocationCounterBy(CONTROL_FLOW_INST_SIZE);
 				}
 				else if (reader->isLoadStoreInstruction(instruction)) {
 					cout << "LOAD STORE INSTRUCTION" << endl;
@@ -250,7 +293,7 @@ bool Assembler::firstPass() {
 						}
 					}
 
-					currentSection.incrementLocationCounterBy(LOAD_STORE_INST_SIZE);
+					currentSection->incrementLocationCounterBy(LOAD_STORE_INST_SIZE);
 				}
 				else if (reader->isStackInstruction(instruction)) {
 					if (argumentsNumber != 1) {
@@ -263,7 +306,7 @@ bool Assembler::firstPass() {
 						break;
 					}
 
-					currentSection.incrementLocationCounterBy(STACK_INST_SIZE);
+					currentSection->incrementLocationCounterBy(STACK_INST_SIZE);
 				}
 				else if (reader->isAritmeticLogicInstruction(instruction)) {
 					if (argumentsNumber != 3) {
@@ -283,7 +326,7 @@ bool Assembler::firstPass() {
 						break;
 					}
 
-					currentSection.incrementLocationCounterBy(ARITM_LOGIC_INST_SIZE);
+					currentSection->incrementLocationCounterBy(ARITM_LOGIC_INST_SIZE);
 				}
 			}
 
@@ -293,19 +336,19 @@ bool Assembler::firstPass() {
 			cout << "THIS IS SECTION WITH NAME: " << word << endl;
 
 			if (symbolTable.findSymbolByName(word) == nullptr) {
-				Section section;
+				Section *section = new Section();
 				
-				section.setType("SEG");
-				section.setName(word);
-				section.setOrderNumber(orderNumberCounter);
-				section.setSectionNumber(orderNumberCounter++);
-				section.setSectionOffset(0);
+				section->setType("SEG");
+				section->setName(word);
+				section->setOrderNumber(orderNumberCounter);
+				section->setSectionNumber(orderNumberCounter++);
+				section->setSectionOffset(0);
 				
 				currentSection = section;
 				
 				sectionArray.push_back(section);
 				
-				symbolTable.addSymbol(section);
+				symbolTable.addSymbol(*section);
 			}
 		}
 		lineCounter++;
@@ -315,6 +358,10 @@ bool Assembler::firstPass() {
 	
 	resetSectionCounters();
 
+	for (int i = 0; i < sectionArray.size(); i++) {
+		cout << sectionArray[i]->getName() << endl;
+	}
+
 	return true;
 }
 
@@ -322,8 +369,6 @@ bool Assembler::secondPass() {
 	string str;
 
 	int lineCounter = 1;
-
-	Section currentSection;
 	
 	unsigned long long machineCode = 0;
 
@@ -560,21 +605,16 @@ bool Assembler::secondPass() {
 						string firstArgument = reader->trim(arguments.at(0));
 
 						if (regex_match(firstArgument, REGEX_ADDR_MODE_REG_DIR)) {
-							regex rgx("((R[0-9]{1}|1[0-5])|PC|SP){1}");
-							smatch match;
-							
-							const string str = firstArgument;
-							string registerOperand = "";
+							vector<string> arg;
+							arg.push_back(firstArgument);
 
-							if (regex_search(str.begin(), str.end(), match, rgx))
-								registerOperand = match[1];
+							firstDoubleWord = createCodeRegisterDirect(arg, instructionCode, 0);
+						
+							string hexCode = longlongToHexString(firstDoubleWord, 4);
 
-							firstRegisterCode = registerCodes[registerOperand];
-							addressModeCode = REG_DIR_ADDR_MODE;
-							
-							firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
-							firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
-							firstDoubleWord |= (firstRegisterCode << REG0_OFFSET);
+							writeSectionContent(hexCode);
+
+							currentSection->incrementLocationCounterBy(4);
 						}
 
 						string secondArgument = reader->trim(arguments.at(1));
@@ -703,30 +743,23 @@ bool Assembler::secondPass() {
 						}
 					}
 
-					currentSection.incrementLocationCounterBy(CONTROL_FLOW_INST_SIZE);
+					currentSection->incrementLocationCounterBy(CONTROL_FLOW_INST_SIZE);
 				}
 				else if (reader->isLoadStoreInstruction(instruction)) {
 					cout << "LOAD STORE INSTRUCTION " << word << endl;
 
-					currentSection.incrementLocationCounterBy(LOAD_STORE_INST_SIZE);
+					currentSection->incrementLocationCounterBy(LOAD_STORE_INST_SIZE);
 				}
 				else if (reader->isStackInstruction(instruction)) {
 					cout << "STACK INSTRUCTION " << word << endl;
 					
-					addressModeCode = REG_DIR_ADDR_MODE;
-
-					regex rgx("((R[0-9]{1}|1[0-5])|PC|SP){1}");
-					smatch match;
+					firstDoubleWord = createCodeRegisterDirect(arguments, instructionCode, 0);
 					
-					const string str = arguments.at(0);
-					string registerOperand = "";
+					string hexCode = longlongToHexString(firstDoubleWord, 4);
 
-					if (regex_search(str.begin(), str.end(), match, rgx))
-						registerOperand = match[1];
+					writeSectionContent(hexCode);
 
-					firstRegisterCode = registerCodes[registerOperand];
-
-					currentSection.incrementLocationCounterBy(STACK_INST_SIZE);
+					currentSection->incrementLocationCounterBy(4);
 				}
 				else if (reader->isAritmeticLogicInstruction(instruction)) {
 					cout << "ARITM LOGIC INSTRUCTION " << word << endl;
@@ -758,18 +791,26 @@ bool Assembler::secondPass() {
 
 					firstRegisterCode = registerCodes[registerOperand];
 
-					currentSection.incrementLocationCounterBy(ARITM_LOGIC_INST_SIZE);
+					currentSection->incrementLocationCounterBy(ARITM_LOGIC_INST_SIZE);
 				}
 			}
 		}
 		else if (reader->isSection(word)) {
 			cout << "THIS IS SECTION WITH NAME: " << word << endl;
 
+			currentSection = findSectionByName(word);
+
+			cout << currentSection->getName() << endl;
 		}
 		lineCounter++;
 	}
 
 	symbolTable.writeToFile("izlaz.txt");
+
+	for (int i = 0; i < sectionArray.size(); i++) {
+		SectionContent sec = sectionArray[i]->getContent();
+		sec.writeInFile(sectionArray[i]->getName(), "izlaz.txt");
+	}
 
 	return true;
 }

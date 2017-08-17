@@ -60,6 +60,9 @@ public:
 
 	//	Get location counter
 	unsigned int getLocationCounter();
+
+	//	Write section content
+	void writeSectionContent(string content);
 private:
 	unsigned int locationCounter;
 	unsigned int startAddress;

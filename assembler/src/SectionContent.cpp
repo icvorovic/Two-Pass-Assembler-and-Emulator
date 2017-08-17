@@ -16,16 +16,22 @@ void SectionContent::addByte(char byte) {
 	byteContentArray.push_back(byte);
 }
 
-void SectionContent::writeInFile(string name) {
+void SectionContent::writeInFile(string sectionName, string name) {
 	ofstream file;
 
 	file.open(name, std::ios::app);
 
 	int count = 0;
-	const int BYTES_PER_LINE = 16;
+	const int BYTES_PER_LINE = 32;
 
-	for (vector<char>::iterator it = byteContentArray.begin(); it != byteContentArray.end(); ++it) {
-		file << byteToHexString(*it) << " ";
+	file << "<" << sectionName << ">" << endl;
+
+	for (int i = 0; i < byteContentArray.size(); i++) {
+		file << byteContentArray[i];
+		
+		if ((i % 2 == 1) && (count != 0) && ((i + 1) % BYTES_PER_LINE != 0)) {
+			file << " ";
+		}
 
 		count = (count + 1) % BYTES_PER_LINE;
 
@@ -33,5 +39,7 @@ void SectionContent::writeInFile(string name) {
 			file << endl;
 		}
 	}
+
+	file << endl;
 }
 
