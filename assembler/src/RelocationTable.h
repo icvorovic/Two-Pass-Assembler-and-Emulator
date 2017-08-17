@@ -10,7 +10,7 @@ using namespace std;
 class RelocationTable {
 public:
 	//	Constructor 
-	RelocationTable(string sectionName);
+	RelocationTable();
 
 	//	Destructor
 	~RelocationTable();
@@ -22,7 +22,6 @@ public:
 	void writeToFile(string name);
 
 private:
-	string sectionName;
 	list<RelocationTableEntry> relocationTableList;
 };
 #endif

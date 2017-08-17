@@ -5,7 +5,6 @@
 #include <string>
 #include "RelocationTable.h"
 #include "SymbolTable.h"
-#include "SectionContent.h"
 #include "Section.h"
 #include "Symbol.h"
 #include "Reader.h"
@@ -32,12 +31,16 @@ public:
 	//	Check if section exists in section content array
 	bool sectionExists(Section section);
 
+	//	Find section by order number
+	Section* findSectionByOrdNumber(unsigned int orderNumber);
+	
+	//	Find section by namespace
+	Section* findSectionByName(string name);
 private:
 	string inputFileName;
 	string outputFileName;
 
-	vector<RelocationTable> relocationTableArray;
-	vector<SectionContent> sectionContentArray;
+	vector<Section> sectionArray;
 
 	Reader *reader;
 

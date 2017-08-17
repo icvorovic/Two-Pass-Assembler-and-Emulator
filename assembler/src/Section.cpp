@@ -6,6 +6,11 @@ Section::Section() {
 }
 
 Section::Section(const Section &sec) {
+	this->type = sec.type;
+	this->orderNumber = sec.orderNumber;
+	this->name = sec.name;
+	this->sectionNumber = sec.sectionNumber;
+	this->offset = sec.offset;
 	this->locationCounter = sec.locationCounter;
 	this->startAddress = sec.startAddress;
 	this->sectionSize = sec.sectionSize;
@@ -38,6 +43,22 @@ void Section::setFlags(string flags) {
 
 string Section::getFlags() {
 	return flags;
+}
+
+void Section::setContent(SectionContent content) {
+	this->content = content;
+}
+
+SectionContent Section::getContent() {
+	return content;
+}
+
+void Section::setRelocationTable(RelocationTable table) {
+	this->relocationTable = table;
+}
+
+RelocationTable Section::getRelocationTable() {
+	return relocationTable;
 }
 
 string Section::formatWrite() {

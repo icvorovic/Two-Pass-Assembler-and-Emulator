@@ -2,7 +2,9 @@
 #define _SECTION_H_
 
 #include <string>
+#include "SectionContent.h"
 #include "SymbolTableEntry.h"
+#include "RelocationTable.h"
 
 using namespace std;
 
@@ -35,6 +37,18 @@ public:
 	//	Get flags
 	string getFlags();
 
+	//	Set section content
+	void setContent(SectionContent content);
+	
+	//	Get section content
+	SectionContent getContent();
+	
+	//	Set relocation table
+	void setRelocationTable(RelocationTable table);
+	
+	//	Get relocation table
+	RelocationTable getRelocationTable();
+	
 	//	Get string in format for write in file
 	string formatWrite();
 
@@ -51,6 +65,9 @@ private:
 	unsigned int startAddress;
 	unsigned int sectionSize;
 	string flags;
+	
+	SectionContent content;
+	RelocationTable relocationTable;
 };
 
 #endif

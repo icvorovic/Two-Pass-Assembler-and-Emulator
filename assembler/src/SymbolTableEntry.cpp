@@ -1,9 +1,7 @@
 #include "SymbolTableEntry.h"
 
-unsigned int SymbolTableEntry::orderNumberGenerator = 0;
-
 SymbolTableEntry::SymbolTableEntry() {
-	orderNumber = ++orderNumberGenerator;
+
 }
 
 SymbolTableEntry::~SymbolTableEntry() {

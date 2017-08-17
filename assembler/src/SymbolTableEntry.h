@@ -45,8 +45,7 @@ public:
 
 	//	Get string in format for write in file
 	virtual string formatWrite();
-private:
-	static unsigned int orderNumberGenerator;
+protected:
 	string type;
 	unsigned int orderNumber;
 	string name;
