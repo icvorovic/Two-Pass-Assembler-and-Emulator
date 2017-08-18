@@ -69,20 +69,8 @@ unsigned long Assembler::createCodeRegisterDirect(vector<string> arguments, int 
 
 		if (regex_search(str.begin(), str.end(), match, rgx))
 			registerOperand = match[1];
-		
-			for (map<string, int>::iterator it = registerCodes.begin(); it != registerCodes.end(); ++it) {
-				cout << it->first << " " << it->second << endl;
-			}
 
 		registerCode = registerCodes.at(registerOperand);
-
-		cout << " REG " << registerOperand << " : " << registerCode << endl;
-
-		int a;
-
-		cin >> a;
-
-
 		machineCode |= (registerCode << (REG0_OFFSET - 5 * i));
 	}
 
@@ -90,7 +78,183 @@ unsigned long Assembler::createCodeRegisterDirect(vector<string> arguments, int 
 	machineCode |= (type << TYPE_OFFSET);
 	machineCode |= (addressModeCode << ADDR_MODE_OFFSET);
 
-	cout << "INST" << instructionCode << " ADDR " << addressModeCode << endl;
+	return machineCode;
+}
+
+unsigned long Assembler::createCodeRegisterIndirect(vector<string> arguments, int instructionCode, int type) {
+	unsigned long addressModeCode = REG_IND_ADDR_MODE;
+	regex rgx("\\[(R1[0-5]{1}|R[0-9]{1}|PC|SP){1}\\]");
+
+	unsigned long machineCode = 0;
+	unsigned long registerCode = 0;
+	
+	for (int i = 0; i < arguments.size(); i++) {	
+		smatch match;
+		
+		const string str = arguments[i];
+		string registerOperand = "";
+
+		if (regex_search(str.begin(), str.end(), match, rgx))
+			registerOperand = match[1];
+
+		registerCode = registerCodes.at(registerOperand);
+		machineCode |= (registerCode << (REG1_OFFSET - 5 * i));
+	}
+
+	machineCode |= (instructionCode << OPCODE_OFFSET);
+	machineCode |= (type << TYPE_OFFSET);
+	machineCode |= (addressModeCode << ADDR_MODE_OFFSET);
+
+	return machineCode;
+}
+
+unsigned long long Assembler::createCodeRegisterIndirectDisplacement(string argument, int codeInstruction, int type) {
+	unsigned long long machineCode = 0;
+	
+	unsigned long firstDoubleWord = 0;
+	unsigned long secondDoubleWord = 0;
+	
+	unsigned long registerCode = 0;
+	
+	unsigned long addressModeCode = REG_IND_DISP_ADDR_MODE;
+	
+	regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}(\\s)*\\+(\\s)*(.*)\\]");
+	smatch match;
+
+	const string str = argument;
+	string registerOperand = "";
+	string displacement = "";
+
+	if (regex_search(str.begin(), str.end(), match, rgx)) {
+		registerOperand = match[1];
+		displacement = match[5];
+	}
+	
+	cout << "REG" << registerOperand << " " << displacement << endl;
+	
+	string infix;
+	vector<string> postfix;
+	string symbol;
+
+	const string stringDisplacement = displacement;
+	string operation;
+									
+	if (regex_search(stringDisplacement.begin(), stringDisplacement.end(), match, REGEX_CONST_EXPRESSION)) {
+		symbol = match [1];
+		operation = match[3]; 
+		infix = match [4];
+	}
+	
+	/*
+		DODAJ RELOKACIONE ZAPISE AKO NE ZNA ADRESU SIMBOLA
+		!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	*/
+	
+
+	cout << "DISPLACEMENT: " << symbol << " " << infix << endl;
+	
+	SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
+	unsigned int sectionNumber = 0;
+	unsigned int address = 0;
+									
+	if (entry != nullptr) {
+		sectionNumber = entry->getSectionNumber();	
+		Section* section = findSectionByOrdNumber(sectionNumber);
+		address = section->getStartAddress();
+	}
+
+	postfix = infixToPostfixExpression(infix);
+
+	int result = evaluateExpression(postfix);
+	
+	cout << "RESULT" << result << endl;
+	
+	registerCode = registerCodes[registerOperand];
+	
+	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
+	firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
+	
+	//	INT, JMP or CALL instructions (has only one argument)
+	if (codeInstruction == 0 || codeInstruction == 2 || codeInstruction == 3) {
+		firstDoubleWord |= (registerCode << REG0_OFFSET);
+	} else {
+		firstDoubleWord |= (registerCode << REG1_OFFSET);
+	} 
+	
+	if (!operation.compare("+")) {
+		secondDoubleWord = address + result;
+	} 
+	else if (!operation.compare("-")) {
+		secondDoubleWord = address - result;
+	}
+	else {
+		secondDoubleWord = result;
+	}
+	
+	machineCode |= secondDoubleWord;
+	machineCode |= (firstDoubleWord << 32);
+	
+	return machineCode;
+}
+
+unsigned long long Assembler::createCodePCRelative(string argument, int codeInstruction, int type) {
+	unsigned long long machineCode = 0;
+	
+	unsigned long firstDoubleWord = 0;
+	unsigned long secondDoubleWord = 0;
+	
+	unsigned long registerCode = 0;
+	unsigned long addressModeCode = REG_IND_DISP_ADDR_MODE;
+	
+	regex rgx("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
+	smatch match;
+	
+	regex rgxAddress("(0x[0-9]{0,8})");
+	smatch matchAddress;
+	
+	const string str = argument;
+	unsigned int address = 0;
+	string symbol = "";
+	
+	if (regex_search(str.begin(), str.end(), match, rgx)) {
+		const string symbolAddress = match[1];
+		
+		if (regex_search(symbolAddress.begin(), symbolAddress.end(), matchAddress, rgxAddress)) {
+			address = stoi(matchAddress[1], nullptr, 0);
+		} else {
+			symbol = symbolAddress;
+		}
+	}
+	
+	if (symbol.compare("")) {
+		SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
+		unsigned int sectionNumber = 0;
+		
+		if (entry != nullptr) {
+			sectionNumber = entry->getSectionNumber();	
+			Section* section = findSectionByOrdNumber(sectionNumber);
+			
+			address = section->getStartAddress();
+		}
+		
+			
+	/*
+		DODAJ RELOKACIONE ZAPISE AKO NE ZNA ADRESU SIMBOLA
+		!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	*/
+	
+	}
+	
+	registerCode = registerCodes["PC"];
+	
+	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
+	firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
+	firstDoubleWord |= (registerCode << REG1_OFFSET);
+	
+	secondDoubleWord = address;
+	
+	machineCode |= secondDoubleWord;
+	machineCode |= (firstDoubleWord << 32);
 
 	return machineCode;
 }
@@ -429,9 +593,9 @@ bool Assembler::secondPass() {
 								string secondArgument = dupArguments.at(1);
 								string thirdArgument = dupArguments.at(2);
 								
-								/*
-									UPISI U TRENUTNU SEKCIJU SADRZAJ KOJI GENERISU DD, DW i DB
-								*/
+								if (!secondArgument.compare("DUP")) {
+									
+								}
 								
 								cout << firstArgument << " " << secondArgument << " " << thirdArgument << endl;  
 							}
@@ -469,127 +633,28 @@ bool Assembler::secondPass() {
 
 							}
 							else if (regex_match(*it, REGEX_ADDR_MODE_REG_IND)) {
-								regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}\\]");
-								smatch match;
-								
-								const string str = *it;
-								string registerOperand = "";
+								vector<string> arg;
+								arg.push_back(*it);
 
-								if (regex_search(str.begin(), str.end(), match, rgx))
-									registerOperand = match[1];
+								firstDoubleWord = createCodeRegisterIndirect(arg, instructionCode, 0);
+							
+								string hexCode = longlongToHexString(firstDoubleWord, 4);
 
-								firstRegisterCode = registerCodes[registerOperand];
-								addressModeCode = REG_IND_ADDR_MODE;
-								
-								firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
-								firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
-								firstDoubleWord |= (firstRegisterCode << REG0_OFFSET);
-								
-								/*
-									WRITE IN CURRENT SECTION CONTENT
-								*/
+								writeSectionContent(hexCode);
+
+								currentSection->incrementLocationCounterBy(4);
 							}
 							else if (regex_match(*it, REGEX_ADDR_MODE_REG_IND_DISP)) {
-								regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}(\\s)*\\+(\\s)*(.*)\\]");
-								smatch match;
-
-								const string str = *it;
-								string registerOperand = "";
-								string displacement = "";
-
-								if (regex_search(str.begin(), str.end(), match, rgx)) {
-									registerOperand = match[1];
-									displacement = match[5];
-								}
+								machineCode = createCodeRegisterIndirectDisplacement(*it, instructionCode, 0);
 								
-								cout << "REG" << registerOperand << " " << displacement << endl;
+								string hexCode = longlongToHexString(machineCode, 8);
 								
-								string infix;
-								vector<string> postfix;
-								string symbol;
-
-								const string stringDisplacement = displacement;
-								string operation;
-																
-								if (regex_search(stringDisplacement.begin(), stringDisplacement.end(), match, REGEX_CONST_EXPRESSION)) {
-									symbol = match [1];
-									operation = match[3]; 
-									infix = match [4];
-								}
-
-								cout << "DISPLACEMENT: " << symbol << " " << infix << endl;
+								writeSectionContent(hexCode);
 								
-								SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
-								unsigned int sectionNumber = 0;
-								unsigned int address = 0;
-																
-								if (entry != nullptr) {
-									sectionNumber = entry->getSectionNumber();	
-									Section* section = findSectionByOrdNumber(sectionNumber);
-									address = section->getStartAddress();
-								}
-
-								postfix = infixToPostfixExpression(infix);
-
-								int result = evaluateExpression(postfix);
-								
-								cout << "RESULT" << result << endl;
-								
-								firstRegisterCode = registerCodes[registerOperand];
-								addressModeCode = REG_IND_DISP_ADDR_MODE;
-								
-								firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
-								firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
-								firstDoubleWord |= (firstRegisterCode << REG0_OFFSET);
-								
-								if (operation.compare("+")) {
-									secondDoubleWord = address + result;
-								} else {
-									secondDoubleWord = address - result;
-								}
-								
+								currentSection->incrementLocationCounterBy(8);
 							}
 							else if (regex_match(*it, REGEX_ADDR_MODE_DOLLAR_PC)) {
-								regex rgx("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
-								smatch match;
 								
-								regex rgxAddress("(0x[0-9]{0,8})");
-								smatch matchAddress;
-								
-								const string str = *it;
-								unsigned int address = 0;
-								string symbol = "";
-								
-								if (regex_search(str.begin(), str.end(), match, rgx)) {
-									const string symbolAddress = match[1];
-									
-									if (regex_search(symbolAddress.begin(), symbolAddress.end(), matchAddress, rgxAddress)) {
-										address = stoi(matchAddress[1], nullptr, 0);
-									} else {
-										symbol = symbolAddress;
-									}
-								}
-								
-								if (symbol.compare("")) {
-									SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
-									unsigned int sectionNumber = 0;
-									
-									if (entry != nullptr) {
-										sectionNumber = entry->getSectionNumber();	
-										Section* section = findSectionByOrdNumber(sectionNumber);
-										
-										address = section->getStartAddress();
-									}
-								}
-								
-								firstRegisterCode == registerCodes["PC"];
-								addressModeCode = REG_IND_DISP_ADDR_MODE;
-								
-								firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
-								firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
-								firstDoubleWord |= (firstRegisterCode << REG0_OFFSET);
-								
-								secondDoubleWord = address;
 							}
 						}
 
@@ -609,12 +674,6 @@ bool Assembler::secondPass() {
 							arg.push_back(firstArgument);
 
 							firstDoubleWord = createCodeRegisterDirect(arg, instructionCode, 0);
-						
-							string hexCode = longlongToHexString(firstDoubleWord, 4);
-
-							writeSectionContent(hexCode);
-
-							currentSection->incrementLocationCounterBy(4);
 						}
 
 						string secondArgument = reader->trim(arguments.at(1));
@@ -623,55 +682,132 @@ bool Assembler::secondPass() {
 
 						}
 						else if (regex_match(secondArgument, REGEX_ADDR_MODE_REG_IND)) {
-							regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}\\]");
-							smatch match;
-							
-							const string str = secondArgument;
-							string registerOperand = "";
+							vector<string> arg;
+							arg.push_back(secondArgument);
 
-							if (regex_search(str.begin(), str.end(), match, rgx))
-								registerOperand = match[1];
+							firstDoubleWord |= createCodeRegisterIndirect(arg, instructionCode, 0);
+						
+							string hexCode = longlongToHexString(firstDoubleWord, 4);
 
-							secondRegisterCode = registerCodes[registerOperand];
-							addressModeCode = REG_IND_ADDR_MODE;
-							
-							firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
-							firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
-							firstDoubleWord |= (firstRegisterCode << REG1_OFFSET);
+							writeSectionContent(hexCode);
+
+							currentSection->incrementLocationCounterBy(4);
 						}
 						else if (regex_match(secondArgument, REGEX_ADDR_MODE_REG_IND_DISP)) {
-							regex rgx("\\[((R[0-9]{1}|1[0-5])|PC|SP){1}(\\s)*\\+(\\s)*(.*)\\]");
-							smatch match;
+							machineCode = (firstDoubleWord << 32) | createCodeRegisterIndirectDisplacement(secondArgument, instructionCode, 0);
+								
+							string hexCode = longlongToHexString(machineCode, 8);
+							
+							writeSectionContent(hexCode);
+							
+							currentSection->incrementLocationCounterBy(8);
+						}
+						else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
+							
+						}
+					}
+				}
+				else if (reader->isLoadStoreInstruction(instruction)) {
+					cout << "LOAD STORE INSTRUCTION " << word << endl;
+					
+					string firstArgument = reader->trim(arguments.at(0));
 
-							const string str = secondArgument;
-							string registerOperand = "";
-							string displacement = "";
+					if (regex_match(firstArgument, REGEX_ADDR_MODE_REG_DIR)) {
+						vector<string> arg;
+						arg.push_back(firstArgument);
 
-							if (regex_search(str.begin(), str.end(), match, rgx)) {
-								registerOperand = match[1];
-								displacement = match[5];
+						firstDoubleWord = createCodeRegisterDirect(arg, instructionCode, 0);
+					}
+					
+					string secondArgument = reader->trim(arguments.at(1));
+					
+					int type = 0;
+					
+					if (!instruction.compare("LOAD")) {
+						type = DOUBLE_WORD;
+					}
+					else if (!instruction.compare("LOADUB")) {
+						type = ZERO_BYTE;
+					}
+					else if (!instruction.compare("LOADSB")) {
+						type = SIGN_BYTE;
+					}
+					else if (!instruction.compare("LOADUW")) {
+						type = ZERO_WORD;
+					}
+					else if (!instruction.compare("LOADSW")) {
+						type = SIGN_WORD;
+					}
+					else if (!instruction.compare("STORE")) {
+						type = DOUBLE_WORD;
+					}
+					else if (!instruction.compare("STOREB")) {
+						type = ZERO_BYTE;
+					}
+					else if (!instruction.compare("STOREW")) {
+						type = ZERO_WORD;
+					}
+					
+					if (!instruction.compare("LOAD")) {
+						if (regex_match(secondArgument, REGEX_ADDR_MODE_IMMEDIATE)) {
+							/*machineCode = createCodeRegisterIndirectDisplacement(secondArgument, instructionCode, type);
+								
+							string hexCode = longlongToHexString(machineCode, 8);
+							
+							writeSectionContent(hexCode);
+							
+							currentSection->incrementLocationCounterBy(8);*/
+						}
+					}
+					
+					if (regex_match(secondArgument, REGEX_ADDR_MODE_MEM_DIR)) {
+						
+					}
+					else if (regex_match(secondArgument, REGEX_ADDR_MODE_REG_IND)) {
+						vector<string> arg;
+						arg.push_back(secondArgument);
+
+						firstDoubleWord |= createCodeRegisterIndirect(arg, instructionCode, type);
+					
+						string hexCode = longlongToHexString(firstDoubleWord, 4);
+
+						writeSectionContent(hexCode);
+
+						currentSection->incrementLocationCounterBy(4);
+					}
+					else if (regex_match(secondArgument, REGEX_ADDR_MODE_REG_IND_DISP)) {
+						machineCode = (firstDoubleWord << 32) | createCodeRegisterIndirectDisplacement(secondArgument, instructionCode, type);
+							
+						string hexCode = longlongToHexString(machineCode, 8);
+						
+						writeSectionContent(hexCode);
+						
+						currentSection->incrementLocationCounterBy(8);
+					}
+					else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
+						regex rgx("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
+						smatch match;
+						
+						regex rgxAddress("(0x[0-9]{0,8})");
+						smatch matchAddress;
+						
+						const string str = secondArgument;
+						unsigned int address = 0;
+						string symbol = "";
+						
+						if (regex_search(str.begin(), str.end(), match, rgx)) {
+							const string symbolAddress = match[1];
+							
+							if (regex_search(symbolAddress.begin(), symbolAddress.end(), matchAddress, rgxAddress)) {
+								address = stoi(matchAddress[1], nullptr, 0);
+							} else {
+								symbol = symbolAddress;
 							}
-							
-							cout << "REG" << registerOperand << " " << displacement << endl;
-							
-							string infix;
-							vector<string> postfix;
-							string symbol;
-
-							const string stringDisplacement = displacement;
-							string operation;
-															
-							if (regex_search(stringDisplacement.begin(), stringDisplacement.end(), match, REGEX_CONST_EXPRESSION)) {
-								symbol = match [1];
-								operation = match[3]; 
-								infix = match [4];
-							}
-
-							cout << "DISPLACEMENT: " << symbol << " " << infix << endl;
-							
+						}
+						
+						if (symbol.compare("")) {
 							SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
 							unsigned int sectionNumber = 0;
-							unsigned int address = 0;
 							
 							if (entry != nullptr) {
 								sectionNumber = entry->getSectionNumber();	
@@ -679,76 +815,17 @@ bool Assembler::secondPass() {
 								
 								address = section->getStartAddress();
 							}
-
-							postfix = infixToPostfixExpression(infix);
-
-							int result = evaluateExpression(postfix);
-							
-							cout << "RESULT" << result << endl;
-							
-							firstRegisterCode = registerCodes[registerOperand];
-							addressModeCode = REG_IND_DISP_ADDR_MODE;
-							
-							firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
-							firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
-							firstDoubleWord |= (firstRegisterCode << REG0_OFFSET);
-							
-							if (operation.compare("+")) {
-								secondDoubleWord = address + result;
-							} else {
-								secondDoubleWord = address - result;
-							}
 						}
-						else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
-							regex rgx("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
-							smatch match;
-							
-							regex rgxAddress("(0x[0-9]{0,8})");
-							smatch matchAddress;
-							
-							const string str = secondArgument;
-							unsigned int address = 0;
-							string symbol = "";
-							
-							if (regex_search(str.begin(), str.end(), match, rgx)) {
-								const string symbolAddress = match[1];
-								
-								if (regex_search(symbolAddress.begin(), symbolAddress.end(), matchAddress, rgxAddress)) {
-									address = stoi(matchAddress[1], nullptr, 0);
-								} else {
-									symbol = symbolAddress;
-								}
-							}
-							
-							if (symbol.compare("")) {
-								SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
-								unsigned int sectionNumber = 0;
-								
-								if (entry != nullptr) {
-									sectionNumber = entry->getSectionNumber();	
-									Section* section = findSectionByOrdNumber(sectionNumber);
-									
-									address = section->getStartAddress();
-								}
-							}
-							
-							firstRegisterCode == registerCodes["PC"];
-							addressModeCode = REG_IND_DISP_ADDR_MODE;
-							
-							firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
-							firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
-							firstDoubleWord |= (firstRegisterCode << REG0_OFFSET);
-							
-							secondDoubleWord = address;
-						}
+						
+						firstRegisterCode == registerCodes["PC"];
+						addressModeCode = REG_IND_DISP_ADDR_MODE;
+						
+						firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
+						firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
+						firstDoubleWord |= (firstRegisterCode << REG0_OFFSET);
+						
+						secondDoubleWord = address;
 					}
-
-					currentSection->incrementLocationCounterBy(CONTROL_FLOW_INST_SIZE);
-				}
-				else if (reader->isLoadStoreInstruction(instruction)) {
-					cout << "LOAD STORE INSTRUCTION " << word << endl;
-
-					currentSection->incrementLocationCounterBy(LOAD_STORE_INST_SIZE);
 				}
 				else if (reader->isStackInstruction(instruction)) {
 					cout << "STACK INSTRUCTION " << word << endl;
@@ -764,32 +841,11 @@ bool Assembler::secondPass() {
 				else if (reader->isAritmeticLogicInstruction(instruction)) {
 					cout << "ARITM LOGIC INSTRUCTION " << word << endl;
 					
-					addressModeCode = REG_DIR_ADDR_MODE;
+					firstDoubleWord = createCodeRegisterDirect(arguments, instructionCode, 0);
 					
-					regex rgx("((R[0-9]{1}|1[0-5])|PC|SP){1}");
-					smatch match;
+					string hexCode = longlongToHexString(firstDoubleWord, 4);
 					
-					const string firstArgument = arguments.at(0);
-					string registerOperand = "";
-
-					if (regex_search(firstArgument.begin(), firstArgument.end(), match, rgx))
-						registerOperand = match[1];
-
-					firstRegisterCode = registerCodes[registerOperand];
-
-					const string secondArgument = arguments.at(1);
-				
-					if (regex_search(firstArgument.begin(), firstArgument.end(), match, rgx))
-						registerOperand = match[1];
-
-					firstRegisterCode = registerCodes[registerOperand];
-
-					const string thirdArgument = arguments.at(2);
-					
-					if (regex_search(firstArgument.begin(), firstArgument.end(), match, rgx))
-						registerOperand = match[1];
-
-					firstRegisterCode = registerCodes[registerOperand];
+					writeSectionContent(hexCode);
 
 					currentSection->incrementLocationCounterBy(ARITM_LOGIC_INST_SIZE);
 				}
@@ -804,8 +860,6 @@ bool Assembler::secondPass() {
 		}
 		lineCounter++;
 	}
-
-	symbolTable.writeToFile("izlaz.txt");
 
 	for (int i = 0; i < sectionArray.size(); i++) {
 		SectionContent sec = sectionArray[i]->getContent();

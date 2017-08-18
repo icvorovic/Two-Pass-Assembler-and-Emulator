@@ -5,6 +5,7 @@
 #include "SectionContent.h"
 #include "SymbolTableEntry.h"
 #include "RelocationTable.h"
+#include "RelocationTableEntry.h"
 
 using namespace std;
 
@@ -63,6 +64,9 @@ public:
 
 	//	Write section content
 	void writeSectionContent(string content);
+	
+	//	Add relocation record in relocation table
+	void addRelocationRecord(RelocationTableEntry entry);
 private:
 	unsigned int locationCounter;
 	unsigned int startAddress;

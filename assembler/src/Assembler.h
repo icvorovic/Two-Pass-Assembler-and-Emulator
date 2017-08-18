@@ -40,6 +40,16 @@ public:
 	//	Create machine code for register indirect address mode
 	unsigned long createCodeRegisterDirect(vector<string> arguments, int codeInstruction , int type);
 
+	//	Create machine code for register indirect address mode
+	unsigned long createCodeRegisterIndirect(vector<string>arguments, int codeInstruction, int type);
+	
+	//	Create machine code for register indirect with displacement address mode and create relocation record
+	unsigned long long createCodeRegisterIndirectDisplacement(string argument, int codeInstruction, int type);
+	
+	//	Create machine code for pc relative with displacement address mode
+	unsigned long long createCodePCRelative(string argument, int codeInstruction, int type);
+	
+	//	Write double word in string byte representation
 	void writeSectionContent(string content);
 
 private:

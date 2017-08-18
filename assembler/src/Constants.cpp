@@ -29,8 +29,15 @@ static bool initializeInstuctionsMap(map<string, int> &instructions) {
 
 	//	Load/Store operations
 	instructions["LOAD"] = 0x10;
-	instructions["STORE"] = 0x11;
-
+	instructions["LOADUB"] = 0x10;
+	instructions["LOADSB"] = 0x10;
+	instructions["LOADUW"] = 0x10;
+	instructions["LOADSW"] = 0x10;
+	
+ 	instructions["STORE"] = 0x11;
+	instructions["STOREB"] = 0x11;
+	instructions["STOREW"] = 0x11;
+	
 	//	Stack operations
 	instructions["PUSH"] = 0x20;
 	instructions["POP"] = 0x21;
@@ -63,15 +70,6 @@ static bool initializeRegisterCodesMap(map<string, int> &registerCodes) {
 
 	registerCodes["SP"] = 0x10;
 	registerCodes["PC"] = 0x11;
-
-
-    for (map<string, int>::iterator it = registerCodes.begin(); it != registerCodes.end(); ++it) {
-		cout << it->first << " " << it->second << endl;
-	}
-
-	int a;
-
-	cin >> a;
 
 	return true;
 }

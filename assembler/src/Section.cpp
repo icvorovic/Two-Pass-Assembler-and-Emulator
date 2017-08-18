@@ -85,11 +85,13 @@ unsigned int Section::getLocationCounter() {
 void Section::writeSectionContent(string contentStr) {
 	for (int i = 0; i < 8; i++) {
 		content.addByte(contentStr.at(i));
-		cout << contentStr.at(i) << " ";
 	}
 
 	for (int i = 8; i < contentStr.size(); i++) {
 		content.addByte(contentStr.at(i));
-		cout << contentStr.at(i) << " ";
 	}
+}
+
+void Section::addRelocationRecord(RelocationTableEntry entry) {
+	relocationTable.addRelocationRecord(entry);
 }
