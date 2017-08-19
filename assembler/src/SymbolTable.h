@@ -15,7 +15,7 @@ public:
 	~SymbolTable();
 
 	//	Add new symbol in table
-	void addSymbol(SymbolTableEntry &symbol);
+	void addSymbol(SymbolTableEntry *symbol);
 
 	//	Write Symbol Table in file
 	void writeToFile(string fileName);
@@ -23,6 +23,6 @@ public:
 	//	Find symbol by name
 	SymbolTableEntry* findSymbolByName(string symbolName);
 private:
-	list<SymbolTableEntry> symbolTableList;
+	list<SymbolTableEntry*> symbolTableList;
 };
 #endif

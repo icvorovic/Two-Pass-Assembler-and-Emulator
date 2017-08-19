@@ -20,14 +20,15 @@ const int IS_ARITM_LOG_OP = 0x30;
 /*
  *	Regular expressions 
  */
-const regex REGEX_LABEL("[a-z|A-Z|_][a-zA-Z0-9_]+:");
-const regex REGEX_ADDR_MODE_IMMEDIATE("\\#([a-z|A-Z|_][a-zA-Z0-9_]+){0,1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
+const regex REGEX_ORG("ORG([ ]*)(0x[0-9]{1,8})");
+const regex REGEX_LABEL("^[a-z|A-Z|_][a-zA-Z0-9_]*:");
+const regex REGEX_ADDR_MODE_IMMEDIATE("\\#([a-z|A-Z|_][a-zA-Z0-9_]*){0,1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
 const regex REGEX_ADDR_MODE_REG_DIR("(R1[0-5]{1}|R[0-9]{1}|PC|SP){1}");
-const regex REGEX_ADDR_MODE_MEM_DIR("[a-z|A-Z|_][a-zA-Z0-9_]+");
+const regex REGEX_ADDR_MODE_MEM_DIR("^([a-z|A-Z|_][a-zA-Z0-9_]*){1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
 const regex REGEX_ADDR_MODE_REG_IND("\\[(R1[0-5]{1}|R[0-9]{1}|PC|SP){1}\\]");
 const regex REGEX_ADDR_MODE_REG_IND_DISP("\\[(R1[0-5]{1}|R[0-9]{1}|PC|SP){1}(\\s)*\\+(\\s)*(.*)\\]");
-const regex REGEX_ADDR_MODE_DOLLAR_PC("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
-const regex REGEX_CONST_EXPRESSION("([a-z|A-Z|_][a-zA-Z0-9_]+){0,1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
+const regex REGEX_ADDR_MODE_DOLLAR_PC("\\$([a-z|A-Z|_][a-zA-Z0-9_]*|0x[0-9]{1,8})");
+const regex REGEX_CONST_EXPRESSION("([a-z|A-Z|_][a-zA-Z0-9_]*){0,1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
 
 /*
 *	Array contains all section types used in assembly language.
@@ -71,11 +72,6 @@ const int ZERO_WORD = 0x1;
 const int SIGN_WORD = 0x5;
 const int ZERO_BYTE = 0x3;
 const int SIGN_BYTE = 0x7;
-
-const int CONTROL_FLOW_INST_SIZE = 8;
-const int LOAD_STORE_INST_SIZE = 8;
-const int STACK_INST_SIZE = 4;
-const int ARITM_LOGIC_INST_SIZE = 4;
 
 const int OPCODE_OFFSET = 24;
 const int ADDR_MODE_OFFSET = 21;

@@ -10,7 +10,7 @@ SymbolTable::~SymbolTable() {
 	symbolTableList.clear();
 }
 
-void SymbolTable::addSymbol(SymbolTableEntry &symbolEntry) {
+void SymbolTable::addSymbol(SymbolTableEntry *symbolEntry) {
 	symbolTableList.push_back(symbolEntry);
 }
 
@@ -21,8 +21,8 @@ void SymbolTable::writeToFile(string name) {
 
 	file << "#TabelaSimbola" << endl;
 
-	for (list<SymbolTableEntry>::iterator it = symbolTableList.begin(); it != symbolTableList.end(); ++it) {
-		file << it->formatWrite() << endl;
+	for (list<SymbolTableEntry*>::iterator it = symbolTableList.begin(); it != symbolTableList.end(); ++it) {
+		file << (*it)->formatWrite() << endl;
 	}
 
 	file.close();
@@ -30,11 +30,11 @@ void SymbolTable::writeToFile(string name) {
 }
 
 SymbolTableEntry* SymbolTable::findSymbolByName(string symbolName) {
-	for (list<SymbolTableEntry>::iterator it = symbolTableList.begin(); it != symbolTableList.end(); ++it) {
-		string name = it->getName();
+	for (list<SymbolTableEntry*>::iterator it = symbolTableList.begin(); it != symbolTableList.end(); ++it) {
+		string name = (*it)->getName();
 
 		if (name.compare(symbolName) == 0) {
-			return &(*it);
+			return *it;
 		}
 	}
 

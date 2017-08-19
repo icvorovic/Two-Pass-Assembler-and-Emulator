@@ -6,6 +6,8 @@ using namespace std;
 
 Section::Section() {
 	locationCounter = 0;
+	startAddress = 0;
+	offset = 0;
 }
 
 Section::Section(const Section &sec) {
@@ -83,11 +85,7 @@ unsigned int Section::getLocationCounter() {
 }
 
 void Section::writeSectionContent(string contentStr) {
-	for (int i = 0; i < 8; i++) {
-		content.addByte(contentStr.at(i));
-	}
-
-	for (int i = 8; i < contentStr.size(); i++) {
+	for (int i = 0; i < contentStr.size(); i++) {
 		content.addByte(contentStr.at(i));
 	}
 }

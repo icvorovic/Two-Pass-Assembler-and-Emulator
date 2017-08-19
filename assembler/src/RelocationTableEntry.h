@@ -34,7 +34,6 @@ public:
 	//	Get string in format for write in file
 	string writeFormat();
 private:
-	static unsigned int orderNumberGenerator;
 	unsigned int address;
 	char type;
 	unsigned int orderNumber;

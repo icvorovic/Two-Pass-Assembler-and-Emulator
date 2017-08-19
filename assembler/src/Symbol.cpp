@@ -2,7 +2,7 @@
 #include "Utility.h"
 
 Symbol::Symbol() {
-
+	value = 0;
 }
 
 Symbol::~Symbol() {
@@ -30,7 +30,7 @@ char Symbol::setFlag() {
 }
 
 string Symbol::formatWrite() {
-	string str = SymbolTableEntry::formatWrite();
+	string str = this->SymbolTableEntry::formatWrite();
 	str += "0x" + intToHexString(value) + " " + flag;
 	return str;
 }

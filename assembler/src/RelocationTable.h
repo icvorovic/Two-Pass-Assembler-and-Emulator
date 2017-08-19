@@ -19,7 +19,7 @@ public:
 	void addRelocationRecord(RelocationTableEntry relocationRecord);
 
 	//	Write relocation table in file
-	void writeToFile(string name);
+	void writeToFile(string sectionName, string name);
 
 private:
 	list<RelocationTableEntry> relocationTableList;

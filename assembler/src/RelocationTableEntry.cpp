@@ -1,10 +1,7 @@
 #include "RelocationTableEntry.h"
 #include "Utility.h"
 
-unsigned int RelocationTableEntry::orderNumberGenerator = 0;
-
 RelocationTableEntry::RelocationTableEntry() {
-	orderNumber = ++orderNumberGenerator;
 }
 
 RelocationTableEntry::~RelocationTableEntry() {

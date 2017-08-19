@@ -51,6 +51,8 @@ public:
 
 	//	Check if instruction is aritmetic-logic instruction
 	bool isAritmeticLogicInstruction(const string &str);
+
+	bool isOrgDirective(const string &str);
 private:
 	string fileName;
 	ifstream fileStream;

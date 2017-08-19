@@ -18,6 +18,7 @@ static bool initializeInstuctionsMap(map<string, int> &instructions) {
 	//	Control flow operations
 	instructions["INT"] = 0x00;
 	instructions["RET"] = 0x01;
+	instructions["RTI"] = 0x01;
 	instructions["JMP"] = 0x02;
 	instructions["CALL"] = 0x03;
 	instructions["JZ"] = 0x04;

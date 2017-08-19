@@ -47,10 +47,22 @@ public:
 	unsigned long long createCodeRegisterIndirectDisplacement(string argument, int codeInstruction, int type);
 	
 	//	Create machine code for pc relative with displacement address mode
-	unsigned long long createCodePCRelative(string argument, int codeInstruction, int type);
+    unsigned long long createCodePCRelative(string argument, int codeInstruction, int type);
 	
+	//	Create machine code for immediate address mode
+	unsigned long long createCodeImmediate(string argument, int codeInstruction, int type);
+
+	//	Create machine code for memory direct address mode
+	unsigned long long createCodeMemoryDirect(string argument, int codeInstruction, int type);
+
 	//	Write double word in string byte representation
 	void writeSectionContent(string content);
+
+	//	Calculate math expression
+	long long calculateExpression(string symbol, string operation, string infix);
+
+	//	Return error description
+	string getErrorDescription();
 
 private:
 	string inputFileName;
@@ -62,6 +74,9 @@ private:
 	Section *currentSection;
 
 	SymbolTable symbolTable;
+
+	bool error;
+	string errorDescription;
 };
 
 #endif

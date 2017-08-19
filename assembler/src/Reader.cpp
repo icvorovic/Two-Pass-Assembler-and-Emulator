@@ -103,6 +103,10 @@ bool Reader::isSection(const string &str) {
 	return false;
 }
 
+bool Reader::isOrgDirective(const string &str) {
+	return !str.compare("ORG");
+}
+
 bool Reader::isControlFlowInstruction(const string &str) {
 	return find(controlFlowInstructions.begin(), controlFlowInstructions.end(), str) != controlFlowInstructions.end();
 }
@@ -118,3 +122,4 @@ bool Reader::isStackInstruction(const string &str) {
 bool Reader::isAritmeticLogicInstruction(const string &str) {
 	return find(aritmeticLogicInstructions.begin(), aritmeticLogicInstructions.end(), str) != aritmeticLogicInstructions.end();
 }
+

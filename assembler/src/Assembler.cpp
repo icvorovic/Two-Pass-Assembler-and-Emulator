@@ -17,6 +17,10 @@ Assembler::~Assembler() {
 	sectionArray.clear();
 }
 
+string Assembler::getErrorDescription() {
+	return errorDescription;
+}
+
 void Assembler::resetSectionCounters() {
 	for (vector<Section*>::iterator it = sectionArray.begin(); it != sectionArray.end(); ++it) {
 		(*it)->resetLocationCounter();
@@ -52,6 +56,46 @@ Section* Assembler::findSectionByName(string name) {
 
 void Assembler::writeSectionContent(string content) {
 	currentSection->writeSectionContent(content);
+}
+
+long long Assembler::calculateExpression(string symbol, string operation, string infix) {
+	unsigned int sectionNumber = 0;
+	unsigned long address = 0;
+
+	unsigned long long secondDoubleWord = 0;
+	unsigned long long offset = 0;
+
+	vector<string> postfix;
+
+	Symbol* entry = (Symbol*)symbolTable.findSymbolByName(symbol);
+
+	if (entry != nullptr) {
+		offset = entry->getSectionOffset();
+		sectionNumber = entry->getSectionNumber();	
+		Section* section = findSectionByOrdNumber(sectionNumber);
+		address = section->getStartAddress() + offset;
+	}
+
+	long result = 0;
+
+	if (infix.compare("")) {
+		postfix = infixToPostfixExpression(infix);
+		result = evaluateExpression(postfix);
+	}
+	
+	cout << "RESULT" << result << endl;
+	
+	if (!operation.compare("+")) {
+		secondDoubleWord = address + result;
+	} 
+	else if (!operation.compare("-")) {
+		secondDoubleWord = address - result;
+	}
+	else {
+		secondDoubleWord = result;
+	}
+
+	return secondDoubleWord;
 }
 
 unsigned long Assembler::createCodeRegisterDirect(vector<string> arguments, int instructionCode, int type) {
@@ -111,8 +155,8 @@ unsigned long Assembler::createCodeRegisterIndirect(vector<string> arguments, in
 unsigned long long Assembler::createCodeRegisterIndirectDisplacement(string argument, int codeInstruction, int type) {
 	unsigned long long machineCode = 0;
 	
-	unsigned long firstDoubleWord = 0;
-	unsigned long secondDoubleWord = 0;
+	unsigned long long firstDoubleWord = 0;
+	long long  secondDoubleWord = 0;
 	
 	unsigned long registerCode = 0;
 	
@@ -130,14 +174,11 @@ unsigned long long Assembler::createCodeRegisterIndirectDisplacement(string argu
 		displacement = match[5];
 	}
 	
-	cout << "REG" << registerOperand << " " << displacement << endl;
-	
 	string infix;
-	vector<string> postfix;
 	string symbol;
+	string operation;
 
 	const string stringDisplacement = displacement;
-	string operation;
 									
 	if (regex_search(stringDisplacement.begin(), stringDisplacement.end(), match, REGEX_CONST_EXPRESSION)) {
 		symbol = match [1];
@@ -145,30 +186,27 @@ unsigned long long Assembler::createCodeRegisterIndirectDisplacement(string argu
 		infix = match [4];
 	}
 	
-	/*
-		DODAJ RELOKACIONE ZAPISE AKO NE ZNA ADRESU SIMBOLA
-		!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	*/
+	secondDoubleWord = calculateExpression(symbol, operation, infix);
 	
+	Symbol* entry = (Symbol*)symbolTable.findSymbolByName(symbol);
 
-	cout << "DISPLACEMENT: " << symbol << " " << infix << endl;
-	
-	SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
-	unsigned int sectionNumber = 0;
-	unsigned int address = 0;
-									
 	if (entry != nullptr) {
-		sectionNumber = entry->getSectionNumber();	
+		unsigned int sectionNumber = entry->getSectionNumber();	
 		Section* section = findSectionByOrdNumber(sectionNumber);
-		address = section->getStartAddress();
+		
+		string flags = section->getFlags();
+		
+		if (flags.find_first_of("F") == string::npos) {
+			RelocationTableEntry relocationEntry;
+
+			relocationEntry.setType('A');
+			relocationEntry.setAddress(currentSection->getStartAddress() + currentSection->getLocationCounter() + 4);
+			relocationEntry.setOrderNumber(section->getOrderNumber());
+
+			currentSection->addRelocationRecord(relocationEntry);
+		}
 	}
 
-	postfix = infixToPostfixExpression(infix);
-
-	int result = evaluateExpression(postfix);
-	
-	cout << "RESULT" << result << endl;
-	
 	registerCode = registerCodes[registerOperand];
 	
 	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
@@ -180,33 +218,131 @@ unsigned long long Assembler::createCodeRegisterIndirectDisplacement(string argu
 	} else {
 		firstDoubleWord |= (registerCode << REG1_OFFSET);
 	} 
-	
-	if (!operation.compare("+")) {
-		secondDoubleWord = address + result;
-	} 
-	else if (!operation.compare("-")) {
-		secondDoubleWord = address - result;
-	}
-	else {
-		secondDoubleWord = result;
-	}
-	
+		
 	machineCode |= secondDoubleWord;
 	machineCode |= (firstDoubleWord << 32);
 	
 	return machineCode;
 }
 
+unsigned long long Assembler::createCodeImmediate(string argument, int codeInstruction, int type) {
+	unsigned long long machineCode = 0;
+	
+	unsigned long long firstDoubleWord = 0;
+	unsigned long long  secondDoubleWord = 0;
+
+	unsigned long addressModeCode = IMMEDIATE_ADDR_MODE;
+	
+	regex rgx("\\#([a-z|A-Z|_][a-zA-Z0-9_]*){0,1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
+	smatch match;
+		
+	string infix;
+	string symbol;
+	string operation;
+
+	const string str = argument;
+									
+	if (regex_search(str.begin(), str.end(), match, rgx)) {
+		symbol = match [1];
+		operation = match[3]; 
+		infix = match [4];
+	}
+	
+	secondDoubleWord = calculateExpression(symbol, operation, infix);
+
+	Symbol* entry = (Symbol*)symbolTable.findSymbolByName(symbol);
+
+	if (entry != nullptr) {
+		unsigned int sectionNumber = entry->getSectionNumber();	
+		Section* section = findSectionByOrdNumber(sectionNumber);
+		
+		string flags = section->getFlags();
+		
+		if (flags.find_first_of("F") == string::npos) {
+			RelocationTableEntry relocationEntry;
+
+			relocationEntry.setType('A');
+			relocationEntry.setAddress(currentSection->getStartAddress() + currentSection->getLocationCounter() + 4);
+			relocationEntry.setOrderNumber(section->getOrderNumber());
+
+			currentSection->addRelocationRecord(relocationEntry);
+		}
+	}
+	
+	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
+	firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
+
+	machineCode |= secondDoubleWord;
+	machineCode |= (firstDoubleWord << 32);
+
+	return machineCode;
+}
+
+unsigned long long Assembler::createCodeMemoryDirect(string argument, int codeInstruction, int type) {
+	unsigned long long machineCode = 0;
+	
+	unsigned long long firstDoubleWord = 0;
+	unsigned long long  secondDoubleWord = 0;
+
+	unsigned long addressModeCode = MEM_DIR_ADDR_MODE;
+	
+	regex rgx("([a-z|A-Z|_][a-zA-Z0-9_]*){0,1}([ ]*){0,1}([\\+\\-]){0,1}(.*){0,1}");
+	smatch match;
+		
+	string infix;
+	string symbol;
+	string operation;
+
+	const string str = argument;
+									
+	if (regex_search(str.begin(), str.end(), match, rgx)) {
+		symbol = match [1];
+		operation = match[3]; 
+		infix = match [4];
+	}
+	
+	secondDoubleWord = calculateExpression(symbol, operation, infix);
+	
+	cout << "SYMBOL " + symbol + " MEMORY DIRECT: " << secondDoubleWord << endl;
+
+	Symbol* entry = (Symbol*)symbolTable.findSymbolByName(symbol);
+
+	if (entry != nullptr) {
+		unsigned int sectionNumber = entry->getSectionNumber();	
+		Section* section = findSectionByOrdNumber(sectionNumber);
+		
+		string flags = section->getFlags();
+		
+		if (flags.find_first_of("F") == string::npos) {
+			RelocationTableEntry relocationEntry;
+
+			relocationEntry.setType('A');
+			relocationEntry.setAddress(currentSection->getStartAddress() + currentSection->getLocationCounter() + 4);
+			relocationEntry.setOrderNumber(section->getOrderNumber());
+
+			currentSection->addRelocationRecord(relocationEntry);
+		}
+	}
+	
+	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
+	firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
+
+	machineCode |= secondDoubleWord;
+	machineCode |= (firstDoubleWord << 32);
+
+	return machineCode;
+}
+
 unsigned long long Assembler::createCodePCRelative(string argument, int codeInstruction, int type) {
 	unsigned long long machineCode = 0;
 	
-	unsigned long firstDoubleWord = 0;
-	unsigned long secondDoubleWord = 0;
+	unsigned long long firstDoubleWord = 0;
+	unsigned long long  secondDoubleWord = 0;
 	
 	unsigned long registerCode = 0;
 	unsigned long addressModeCode = REG_IND_DISP_ADDR_MODE;
 	
-	regex rgx("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
+	regex rgx("\\$([a-z|A-Z|_][a-zA-Z0-9_]*|0x[0-9]{0,8})");
 	smatch match;
 	
 	regex rgxAddress("(0x[0-9]{0,8})");
@@ -226,25 +362,32 @@ unsigned long long Assembler::createCodePCRelative(string argument, int codeInst
 		}
 	}
 	
-	if (symbol.compare("")) {
-		SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
-		unsigned int sectionNumber = 0;
+	Symbol* entry = (Symbol*)symbolTable.findSymbolByName(symbol);
+
+	if (entry != nullptr) {
+		unsigned int sectionNumber = entry->getSectionNumber();	
+		Section* section = findSectionByOrdNumber(sectionNumber);
 		
-		if (entry != nullptr) {
-			sectionNumber = entry->getSectionNumber();	
-			Section* section = findSectionByOrdNumber(sectionNumber);
+		if (section != currentSection){
+			string flags = section->getFlags();
 			
-			address = section->getStartAddress();
+			address = entry->getValue();
+
+			if (flags.find_first_of("F") == string::npos) {
+				RelocationTableEntry relocationEntry;
+	
+				relocationEntry.setType('R');
+				relocationEntry.setAddress(currentSection->getStartAddress() + currentSection->getLocationCounter() + 4);
+				relocationEntry.setOrderNumber(section->getOrderNumber());
+
+				currentSection->addRelocationRecord(relocationEntry);
+			}
+		} else {
+			address = entry->getValue() - currentSection->getStartAddress() - currentSection->getLocationCounter() - 8;
 		}
-		
-			
-	/*
-		DODAJ RELOKACIONE ZAPISE AKO NE ZNA ADRESU SIMBOLA
-		!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	*/
-	
+
 	}
-	
+
 	registerCode = registerCodes["PC"];
 	
 	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
@@ -267,38 +410,30 @@ bool Assembler::firstPass() {
 
 	reader = new Reader(inputFileName);
 
+	error = false;
+	
 	string str;
 
 	int lineCounter = 1;
 	int orderNumberCounter = 1;
-	
+	int incrementer;
+
 	while (1) {
 		cout << "==================================================" << endl;
 
 		str = reader->readNextLine();
 
 		if (str.empty()) {
-			cout << "There is not .end directive."  << endl;
-			break;
+			error = true;
+			errorDescription = "There is not .end directive.";
+
+			return !error;
 		}
 
 		str = reader->trim(str);
-
-		cout << str << endl;
-
-		cout << "DISCARDED COMMENT: " << endl;
-
 		str = reader->discardComment(str);
 
-		cout << str << endl;
-
-		cout << "FIRST WORD: " << endl;
-
 		string word = reader->getFirstWord(str);
-
-		bool error = false;
-
-		cout << word << endl;
 
 		if (!word.compare(".end")) {
 			cout << "First Pass finised. End of assembler file." << endl;
@@ -310,14 +445,19 @@ bool Assembler::firstPass() {
 				string nextWord = reader->getFirstWord(str);
 
 				if (symbolTable.findSymbolByName(word) == nullptr) {
-					Symbol symbol;
+					Symbol *symbol = new Symbol();
 
-					symbol.setType("SYM");
-					symbol.setOrderNumber(orderNumberCounter++);
-					symbol.setName(word.substr(0, word.size() - 1));
-					symbol.setSectionNumber(currentSection->getOrderNumber());
-					symbol.setSectionOffset(currentSection->getLocationCounter());
-					
+					symbol->setType("SYM");
+					symbol->setOrderNumber(orderNumberCounter++);
+					symbol->setName(word.substr(0, word.size() - 1));
+					symbol->setSectionNumber(currentSection->getOrderNumber());
+
+					cout << "LOCATION:" << currentSection->getLocationCounter() << endl;
+
+					symbol->setValue(currentSection->getLocationCounter());
+					symbol->setSectionOffset(currentSection->getLocationCounter());
+					symbol->setFlag('L');
+
 					symbolTable.addSymbol(symbol);
 				}
 
@@ -344,16 +484,33 @@ bool Assembler::firstPass() {
 					cout << "CONTROL FLOW INSTRUCTION: " << word << endl;
 
 					if (!instruction.compare("INT")) {
+						incrementer = 4;
+						
 						if (argumentsNumber != 1) {
-							cout << "ERROR Line " << lineCounter << ": Unexcepted arguments number. INT excepts 1 argument." << endl;
-							break;
+							error = true;
+							errorDescription =  "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. INT excepts 1 argument.";
+							
+							return !error;
+						}
+					}
+
+					if (!instruction.compare("RTI") || !instruction.compare("RET")) {
+						incrementer = 4;
+						
+						if (argumentsNumber != 0) {
+							error = true;
+							errorDescription =  "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 0 argument.";
+							
+							return !error;
 						}
 					}
 
 					if (!instruction.compare("JMP") || !instruction.compare("CALL")) {
 						if (argumentsNumber != 1) {
-							cout << "ERROR Line " << lineCounter << ": Unexcepted arguments number. " << instruction << " excepts 1 argument." << endl;
-							break;
+							error = true;
+							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 1 argument.";
+							
+							return !error;
 						}
 
 						for (vector<string>::iterator it = arguments.begin(); it != arguments.end(); ++it) {
@@ -361,26 +518,29 @@ bool Assembler::firstPass() {
 
 							cout << *it << endl;
 
-							if (!regex_match(*it, REGEX_ADDR_MODE_MEM_DIR) &&
-								!regex_match(*it, REGEX_ADDR_MODE_REG_IND) &&
-								!regex_match(*it, REGEX_ADDR_MODE_REG_IND_DISP) &&
-								!regex_match(*it, REGEX_ADDR_MODE_DOLLAR_PC)) {
-
-								cout << "ERROR Line " << lineCounter << ": Unexcepted address mode." << endl;
-								error = true;
-								break;
+							if (regex_match(*it, REGEX_ADDR_MODE_MEM_DIR) ||
+								regex_match(*it, REGEX_ADDR_MODE_REG_IND_DISP) ||
+								regex_match(*it, REGEX_ADDR_MODE_DOLLAR_PC)) {
+								incrementer = 8;
 							}
-						}
-
-						if (error) {
-							break;
+						    else if(regex_match(*it, REGEX_ADDR_MODE_REG_IND)) {
+								incrementer = 4;
+							}
+							else {
+								error = true;
+								errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted address mode.";
+								
+								return !error;
+							}
 						}
 					}
 
 					if (!instruction.compare("RET")) {
 						if (argumentsNumber != 0) {
-							cout << "ERROR Line " << lineCounter << ": Unexcepted arguments number. " << instruction << " excepts 0 argument." << endl;
-							break;
+							error = true;
+							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 0 argument.";
+							
+							return !error;
 						}
 					}
 
@@ -392,38 +552,52 @@ bool Assembler::firstPass() {
 						|| !instruction.compare("JLEZ")) {
 
 						if (argumentsNumber != 2) {
-							cout << "ERROR Line " << lineCounter << ": Unexcepted arguments number. " << instruction << " excepts 2 argument." << endl;
-							break;
+							error = true;
+							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 2 argument.";
+							
+							return !error;
 						}
 
 						if (!regex_match(reader->trim(arguments.at(0)), REGEX_ADDR_MODE_REG_DIR)) {
-							cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for first argument." << endl;
-							break;
+							error = true;
+							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted address mode for first argument.";
+							
+							return !error;
 						}
 
-						if (!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_MEM_DIR) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND_DISP) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_DOLLAR_PC)) {
+						if (regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_MEM_DIR) ||
+							regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND_DISP) ||
+							regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_DOLLAR_PC)) {
+							incrementer = 8;
+						} 
+						else if (regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND)) {
+							incrementer = 4;
+						} 
+						else {
+							error = true;
+							errorDescription =  "ERROR Line " + to_string(lineCounter) + ": Unexcepted address mode for second argument.";
 
-							cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for second argument." << endl;
-							break;
+							return !error;
 						}
 					}
 
-					currentSection->incrementLocationCounterBy(CONTROL_FLOW_INST_SIZE);
+					currentSection->incrementLocationCounterBy(incrementer);
 				}
 				else if (reader->isLoadStoreInstruction(instruction)) {
 					cout << "LOAD STORE INSTRUCTION" << endl;
 
 					if (argumentsNumber != 2) {
-						cout << "ERROR Line " << lineCounter << ": Unexcepted arguments number. " << instruction << " excepts 2 argument." << endl;
-						break;
+						error = true;
+						errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 2 argument.";
+						
+						return !error;
 					}
 
 					if (!regex_match(reader->trim(arguments.at(0)), REGEX_ADDR_MODE_REG_DIR)) {
-						cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for first argument." << endl;
-						break;
+						error = true;
+						errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted address mode for first argument.";
+
+						return !error;
 					}
 
 					if (!instruction.compare("LOAD") ||
@@ -431,14 +605,22 @@ bool Assembler::firstPass() {
 						!instruction.compare("LOADUW") ||
 						!instruction.compare("LOADSW")) {
 
-						if (!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_IMMEDIATE) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_DIR) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_MEM_DIR) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND_DISP)) {
-
-							cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for second argument." << endl;
-							break;
+						if (regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_IMMEDIATE) ||
+							regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND_DISP) ||
+							regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_MEM_DIR) ||
+							regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_DOLLAR_PC)) {
+							incrementer = 8;
+						}
+						else if (regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_DIR) ||
+							     regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND)) {
+							incrementer = 4;
+						} 
+						else {
+							
+							error = true;
+						 	errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted address mode for second argument.";
+							
+							return !error;
 						}
 					}
 
@@ -446,51 +628,65 @@ bool Assembler::firstPass() {
 						!instruction.compare("STOREB") ||
 						!instruction.compare("STOREW")) {
 
-						if (regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_IMMEDIATE) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_DIR) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_MEM_DIR) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND) &&
-							!regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND_DISP)) {
-
-							cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for second argument." << endl;
-							break;
+						if (regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_IMMEDIATE) ||
+							regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND_DISP) ||
+							regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_MEM_DIR) ||
+							regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_DOLLAR_PC)) {
+							incrementer = 8;
+						}
+						else if (regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_DIR) ||
+							     regex_match(reader->trim(arguments.at(1)), REGEX_ADDR_MODE_REG_IND)) {
+							incrementer = 4;
+						} 
+						else {
+							error = true;
+							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted address mode for second argument.";
+							
+							return !error;
 						}
 					}
 
-					currentSection->incrementLocationCounterBy(LOAD_STORE_INST_SIZE);
+					currentSection->incrementLocationCounterBy(incrementer);
 				}
 				else if (reader->isStackInstruction(instruction)) {
+					incrementer = 4;
+
 					if (argumentsNumber != 1) {
-						cout << "ERROR Line " << lineCounter << ": Unexcepted arguments number. " << instruction << " excepts 1 argument." << endl;
-						break;
+						error = true;
+						errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 1 argument.";
+						
+						return !error;
 					}
 
 					if (!regex_match(reader->trim(arguments.at(0)), REGEX_ADDR_MODE_REG_DIR)) {
-						cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for first argument." << endl;
-						break;
+						error = true;
+						errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted address mode for first argument.";
+						
+						return !error;
 					}
 
-					currentSection->incrementLocationCounterBy(STACK_INST_SIZE);
+					currentSection->incrementLocationCounterBy(incrementer);
 				}
 				else if (reader->isAritmeticLogicInstruction(instruction)) {
+					incrementer = 4;
+
 					if (argumentsNumber != 3) {
-						cout << "ERROR Line " << lineCounter << ": Unexcepted arguments number. " << instruction << " excepts 3 argument." << endl;
-						break;
+						error = true;
+						errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 3 argument.";
+						
+						return !error;
 					}
 
 					for (vector<string>::iterator it = arguments.begin(); it != arguments.end(); ++it) {
 						if (!regex_match(reader->trim(*it), REGEX_ADDR_MODE_REG_DIR)) {
-							cout << "ERROR Line " << lineCounter << ": Unexcepted address mode for first argument." << endl;
-							error = true;
-							break;
+							error = true;						
+							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted address mode for argument.";
+							
+							return !error;
 						}
 					}
 
-					if (error) {
-						break;
-					}
-
-					currentSection->incrementLocationCounterBy(ARITM_LOGIC_INST_SIZE);
+					currentSection->incrementLocationCounterBy(incrementer);
 				}
 			}
 
@@ -507,24 +703,19 @@ bool Assembler::firstPass() {
 				section->setOrderNumber(orderNumberCounter);
 				section->setSectionNumber(orderNumberCounter++);
 				section->setSectionOffset(0);
+				section->resetLocationCounter();
 				
 				currentSection = section;
 				
 				sectionArray.push_back(section);
 				
-				symbolTable.addSymbol(*section);
+				symbolTable.addSymbol(section);
 			}
 		}
 		lineCounter++;
 	}
-
-	symbolTable.writeToFile("izlaz.txt");
 	
 	resetSectionCounters();
-
-	for (int i = 0; i < sectionArray.size(); i++) {
-		cout << sectionArray[i]->getName() << endl;
-	}
 
 	return true;
 }
@@ -536,7 +727,7 @@ bool Assembler::secondPass() {
 	
 	unsigned long long machineCode = 0;
 
-	unsigned long firstDoubleWord = 0;
+	unsigned long long firstDoubleWord = 0;
 
 	unsigned long long instructionCode = 0;
 	unsigned long long addressModeCode = 0;
@@ -544,7 +735,12 @@ bool Assembler::secondPass() {
 	unsigned long long secondRegisterCode = 0;
 	unsigned long long thirdRegisterCode = 0;
 
-	unsigned long secondDoubleWord;
+	unsigned long long secondDoubleWord;
+
+	bool previousLineOrg = false;
+	unsigned long orgAddress = 0;
+
+	error = false;
 
 	while (1) {
 		cout << "==================================================" << endl;
@@ -552,8 +748,10 @@ bool Assembler::secondPass() {
 		str = reader->readNextLine();
 
 		if (str.empty()) {
-			cout << "There is not .end directive."  << endl;
-			break;
+			error = true;
+			errorDescription = "There is not .end directive.";
+			
+			return !error;
 		}
 
 		str = reader->trim(str);
@@ -572,6 +770,13 @@ bool Assembler::secondPass() {
 			if (reader->isLabel(word)) {
 				string nextWord = reader->getFirstWord(str);
 
+				Symbol* symbol = (Symbol*)symbolTable.findSymbolByName(word.substr(0, word.size() - 1));
+
+				if (symbol != nullptr) {
+					symbol->setValue(currentSection->getStartAddress() + currentSection->getLocationCounter());
+					symbol->setSectionOffset(symbol->getValue());
+				}
+
 				if (!nextWord.empty()) {
 					if (find(mnemonics.begin(), mnemonics.end(), nextWord) != mnemonics.end()) {
 						word = nextWord;
@@ -581,11 +786,26 @@ bool Assembler::secondPass() {
 						
 						vector<string> dataDefineFields = reader->split(str, ',');
 						
+						int dataSize = 0;
+
+						if (!nextWord.compare("DB")) {
+							dataSize = 1;
+						}
+
+						if (!nextWord.compare("DW")) {
+							dataSize = 2;
+						}
+
+						if (!nextWord.compare("DD")) {
+							dataSize = 4;
+						}
+
 						for (vector<string>::iterator it = dataDefineFields.begin(); it != dataDefineFields.end(); ++it) {
 							*it = reader->trim(*it);
 							
 							smatch match;
-							
+							string hexstring;
+
 							if (it->find_first_of(" ") != string::npos) {
 								vector<string> dupArguments = reader->split(*it, ' ');
 								
@@ -593,20 +813,57 @@ bool Assembler::secondPass() {
 								string secondArgument = dupArguments.at(1);
 								string thirdArgument = dupArguments.at(2);
 								
-								if (!secondArgument.compare("DUP")) {
-									
+								unsigned long long firstArgumentNumber = stoi(firstArgument, nullptr, 0);
+								unsigned long long secondArgumentNumer = stoi(thirdArgument, nullptr, 0);
+
+								hexstring = longlongToHexString(secondArgumentNumer, dataSize);
+							
+								for (int i = 0; i < firstArgumentNumber; i++) {
+									currentSection->writeSectionContent(hexstring);
 								}
 								
+								currentSection->incrementLocationCounterBy(dataSize * firstArgumentNumber);
+
 								cout << firstArgument << " " << secondArgument << " " << thirdArgument << endl;  
-							}
+							} else {
+								const string str = *it;
+								string symbol;
+								string operation;
+								string infix;
+	
+								if (regex_search(str.begin(), str.end(), match, REGEX_CONST_EXPRESSION)) {
+									symbol = match [1];
+									operation = match[3]; 
+									infix = match [4];
+								}
 								
-							const string str = *it;
-							string registerOperand = "";
+								unsigned long long argument = calculateExpression(symbol, operation, infix);
+	
+								hexstring = longlongToHexString(argument, dataSize);
 
-							if (regex_search(str.begin(), str.end(), match, REGEX_CONST_EXPRESSION)) {
-								registerOperand = match[1];
+								currentSection->writeSectionContent(hexstring);
+
+								Symbol* entry = (Symbol*)symbolTable.findSymbolByName(symbol);
+								
+								if (entry != nullptr) {
+									unsigned int sectionNumber = entry->getSectionNumber();	
+									Section* section = findSectionByOrdNumber(sectionNumber);
+									
+									string flags = section->getFlags();
+									
+									if (flags.find_first_of("F") == string::npos) {
+										RelocationTableEntry relocationEntry;
+							
+										relocationEntry.setType('A');
+										relocationEntry.setAddress(currentSection->getStartAddress() + currentSection->getLocationCounter());
+										relocationEntry.setOrderNumber(section->getOrderNumber());
+						
+										currentSection->addRelocationRecord(relocationEntry);
+									}
+								}
+
+								currentSection->incrementLocationCounterBy(dataSize);
 							}
-
 						}
 					}
 				}
@@ -623,6 +880,16 @@ bool Assembler::secondPass() {
 
 				if (reader->isControlFlowInstruction(instruction)) {
 					cout << "CONTROL FLOW INSTRUCTION: " << word << endl;
+
+					if (!instruction.compare("INT") || !instruction.compare("RET") || !instruction.compare("RTI")) {
+						firstDoubleWord = instructionCode << OPCODE_OFFSET;
+
+						string hexCode = longlongToHexString(firstDoubleWord, 4);
+
+						writeSectionContent(hexCode);
+
+						currentSection->incrementLocationCounterBy(4);
+					}
 					
 					if (!instruction.compare("JMP") || !instruction.compare("CALL")) {
 
@@ -630,7 +897,13 @@ bool Assembler::secondPass() {
 							*it = reader->trim(*it);
 
 							if (regex_match(*it, REGEX_ADDR_MODE_MEM_DIR)) {
-
+								machineCode = createCodeMemoryDirect(*it, instructionCode, 0);
+								
+								string hexCode = longlongToHexString(machineCode, 8);
+								
+								writeSectionContent(hexCode);
+								
+								currentSection->incrementLocationCounterBy(8);
 							}
 							else if (regex_match(*it, REGEX_ADDR_MODE_REG_IND)) {
 								vector<string> arg;
@@ -654,7 +927,13 @@ bool Assembler::secondPass() {
 								currentSection->incrementLocationCounterBy(8);
 							}
 							else if (regex_match(*it, REGEX_ADDR_MODE_DOLLAR_PC)) {
+								machineCode = createCodePCRelative(*it, instructionCode, 0);
 								
+								string hexCode = longlongToHexString(machineCode, 8);
+								
+								writeSectionContent(hexCode);
+								
+								currentSection->incrementLocationCounterBy(8);
 							}
 						}
 
@@ -679,7 +958,13 @@ bool Assembler::secondPass() {
 						string secondArgument = reader->trim(arguments.at(1));
 
 						if (regex_match(secondArgument, REGEX_ADDR_MODE_MEM_DIR)) {
-
+							machineCode = createCodeMemoryDirect(secondArgument, instructionCode, 0);
+							
+							string hexCode = longlongToHexString(machineCode, 8);
+							
+							writeSectionContent(hexCode);
+							
+							currentSection->incrementLocationCounterBy(8);
 						}
 						else if (regex_match(secondArgument, REGEX_ADDR_MODE_REG_IND)) {
 							vector<string> arg;
@@ -703,7 +988,13 @@ bool Assembler::secondPass() {
 							currentSection->incrementLocationCounterBy(8);
 						}
 						else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
+							machineCode = createCodePCRelative(secondArgument, instructionCode, 0);
 							
+							string hexCode = longlongToHexString(machineCode, 8);
+							
+							writeSectionContent(hexCode);
+							
+							currentSection->incrementLocationCounterBy(8);
 						}
 					}
 				}
@@ -750,18 +1041,24 @@ bool Assembler::secondPass() {
 					
 					if (!instruction.compare("LOAD")) {
 						if (regex_match(secondArgument, REGEX_ADDR_MODE_IMMEDIATE)) {
-							/*machineCode = createCodeRegisterIndirectDisplacement(secondArgument, instructionCode, type);
+							machineCode = createCodeImmediate(secondArgument, instructionCode, type);
 								
 							string hexCode = longlongToHexString(machineCode, 8);
 							
 							writeSectionContent(hexCode);
 							
-							currentSection->incrementLocationCounterBy(8);*/
+							currentSection->incrementLocationCounterBy(8);
 						}
 					}
 					
 					if (regex_match(secondArgument, REGEX_ADDR_MODE_MEM_DIR)) {
+						machineCode = createCodeMemoryDirect(secondArgument, instructionCode, 0);
 						
+						string hexCode = longlongToHexString(machineCode, 8);
+						
+						writeSectionContent(hexCode);
+						
+						currentSection->incrementLocationCounterBy(8);
 					}
 					else if (regex_match(secondArgument, REGEX_ADDR_MODE_REG_IND)) {
 						vector<string> arg;
@@ -785,46 +1082,13 @@ bool Assembler::secondPass() {
 						currentSection->incrementLocationCounterBy(8);
 					}
 					else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
-						regex rgx("\\$([a-z|A-Z|_][a-zA-Z0-9_]+|0x[0-9]{0,8})");
-						smatch match;
+						machineCode = createCodePCRelative(secondArgument, instructionCode, 0);
 						
-						regex rgxAddress("(0x[0-9]{0,8})");
-						smatch matchAddress;
+						string hexCode = longlongToHexString(machineCode, 8);
 						
-						const string str = secondArgument;
-						unsigned int address = 0;
-						string symbol = "";
+						writeSectionContent(hexCode);
 						
-						if (regex_search(str.begin(), str.end(), match, rgx)) {
-							const string symbolAddress = match[1];
-							
-							if (regex_search(symbolAddress.begin(), symbolAddress.end(), matchAddress, rgxAddress)) {
-								address = stoi(matchAddress[1], nullptr, 0);
-							} else {
-								symbol = symbolAddress;
-							}
-						}
-						
-						if (symbol.compare("")) {
-							SymbolTableEntry* entry = symbolTable.findSymbolByName(symbol);
-							unsigned int sectionNumber = 0;
-							
-							if (entry != nullptr) {
-								sectionNumber = entry->getSectionNumber();	
-								Section* section = findSectionByOrdNumber(sectionNumber);
-								
-								address = section->getStartAddress();
-							}
-						}
-						
-						firstRegisterCode == registerCodes["PC"];
-						addressModeCode = REG_IND_DISP_ADDR_MODE;
-						
-						firstDoubleWord |= (instructionCode << OPCODE_OFFSET);
-						firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
-						firstDoubleWord |= (firstRegisterCode << REG0_OFFSET);
-						
-						secondDoubleWord = address;
+						currentSection->incrementLocationCounterBy(8);
 					}
 				}
 				else if (reader->isStackInstruction(instruction)) {
@@ -847,7 +1111,7 @@ bool Assembler::secondPass() {
 					
 					writeSectionContent(hexCode);
 
-					currentSection->incrementLocationCounterBy(ARITM_LOGIC_INST_SIZE);
+					currentSection->incrementLocationCounterBy(4);
 				}
 			}
 		}
@@ -856,12 +1120,59 @@ bool Assembler::secondPass() {
 
 			currentSection = findSectionByName(word);
 
+			string flags = currentSection->getFlags();
+
+			regex textSection("\\.text(\\.(0|[1-9][0-9]*)){0,1}");
+			regex dataSection("\\.data(\\.(0|[1-9][0-9]*)){0,1}");
+			regex readOnlySection("\\.rodata(\\.(0|[1-9][0-9]*)){0,1}");
+			regex bssSection("\\.bss(\\.(0|[1-9][0-9]*)){0,1}");
+
+			if (regex_match(word, textSection)) {
+				flags += "RE";
+			}
+			else if (regex_match(word, dataSection)) {
+				flags += "RW";
+			}
+			else if (regex_match(word, readOnlySection)) {
+				flags += "R";
+			}
+			else if (regex_match(word, bssSection)) {
+				flags += "RW";
+			}
+
+			if (previousLineOrg) {
+				flags += "F";
+				currentSection->setStartAddress(orgAddress);
+				previousLineOrg = false;
+			}
+
+			currentSection->setFlags(flags);
+
 			cout << currentSection->getName() << endl;
+		}
+		else if (reader->isOrgDirective(word)) {
+			word = reader->getFirstWord(str);
+
+			orgAddress = stoi(reader->trim(word), nullptr, 0);
+
+			previousLineOrg = true;
+
 		}
 		lineCounter++;
 	}
 
 	for (int i = 0; i < sectionArray.size(); i++) {
+		unsigned int size = sectionArray[i]->getLocationCounter();
+		sectionArray[i]->setSectionSize(size);
+	}
+	
+	symbolTable.writeToFile("izlaz.txt");
+
+	for (int i = 0; i < sectionArray.size(); i++) {
+		RelocationTable relocationTable = sectionArray[i]->getRelocationTable();
+		
+		relocationTable.writeToFile(sectionArray[i]->getName(), "izlaz.txt");
+
 		SectionContent sec = sectionArray[i]->getContent();
 		sec.writeInFile(sectionArray[i]->getName(), "izlaz.txt");
 	}
