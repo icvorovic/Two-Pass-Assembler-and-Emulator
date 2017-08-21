@@ -20,6 +20,9 @@ public:
 	//	Write byte vector to file in HEX format
 	void writeInFile(string sectionName, string name);
 
+	//	Get section content like byte array
+	vector<char> getByteContent();
+
 private:
 	vector<char> byteContentArray;
 };

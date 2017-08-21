@@ -43,3 +43,6 @@ void SectionContent::writeInFile(string sectionName, string name) {
 	file << endl;
 }
 
+vector<char> SectionContent::getByteContent() {
+	return byteContentArray;
+}

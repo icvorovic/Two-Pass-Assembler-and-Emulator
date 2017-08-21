@@ -7,10 +7,17 @@
 using namespace std;
 
 int main(int argc, char** args) {
-	Assembler *as = new Assembler("test.txt", "blabla.txt");
+	Assembler *as = new Assembler("test1.txt", "blabla.txt");
 
-	as->firstPass();
-	as->secondPass();
+	bool result;
+	
+	result = as->firstPass();
+	
+	if (!result) {
+		cout << as->getErrorDescription() << endl;
+	} else {
+		as->secondPass();
+	}
 	
 	delete as;
 }

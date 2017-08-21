@@ -29,15 +29,25 @@ bool isFileExists(string fileName) {
 
 string longlongToHexString(unsigned long long number, int bytesNumber) {
 		string result = "";
-		
+		string byte = "";
+
         for(int i = 0; i < 2 * bytesNumber; i++){
             unsigned long long tmp = number & 0xF;
 			
 			tmp += tmp >= 10 ? 55 : 48;
 			
-			result = (char)tmp + result;
+			byte = (char)tmp + byte;
 
+			if (i % 2 == 1) {
+				result += byte;
+				byte = "";
+			}
+			
 			number >>= 4;
+		}
+
+		if (bytesNumber == 8) {
+			result = result.substr(8,8) + result.substr(0,8);
 		}
 
         return result;

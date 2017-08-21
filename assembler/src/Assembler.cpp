@@ -82,9 +82,7 @@ long long Assembler::calculateExpression(string symbol, string operation, string
 		postfix = infixToPostfixExpression(infix);
 		result = evaluateExpression(postfix);
 	}
-	
-	cout << "RESULT" << result << endl;
-	
+		
 	if (!operation.compare("+")) {
 		secondDoubleWord = address + result;
 	} 
@@ -92,7 +90,7 @@ long long Assembler::calculateExpression(string symbol, string operation, string
 		secondDoubleWord = address - result;
 	}
 	else {
-		secondDoubleWord = result;
+		secondDoubleWord = address;
 	}
 
 	return secondDoubleWord;
@@ -303,8 +301,6 @@ unsigned long long Assembler::createCodeMemoryDirect(string argument, int codeIn
 	
 	secondDoubleWord = calculateExpression(symbol, operation, infix);
 	
-	cout << "SYMBOL " + symbol + " MEMORY DIRECT: " << secondDoubleWord << endl;
-
 	Symbol* entry = (Symbol*)symbolTable.findSymbolByName(symbol);
 
 	if (entry != nullptr) {
@@ -404,7 +400,7 @@ unsigned long long Assembler::createCodePCRelative(string argument, int codeInst
 
 bool Assembler::firstPass() {
 	if (!isFileExists(inputFileName)) {
-		cout << "ERROR: File '" + inputFileName + "' doesn't exists." << endl;
+		errorDescription = "ERROR: File '" + inputFileName + "' doesn't exists.";
 		return false;
 	}
 
@@ -451,9 +447,6 @@ bool Assembler::firstPass() {
 					symbol->setOrderNumber(orderNumberCounter++);
 					symbol->setName(word.substr(0, word.size() - 1));
 					symbol->setSectionNumber(currentSection->getOrderNumber());
-
-					cout << "LOCATION:" << currentSection->getLocationCounter() << endl;
-
 					symbol->setValue(currentSection->getLocationCounter());
 					symbol->setSectionOffset(currentSection->getLocationCounter());
 					symbol->setFlag('L');
@@ -515,8 +508,6 @@ bool Assembler::firstPass() {
 
 						for (vector<string>::iterator it = arguments.begin(); it != arguments.end(); ++it) {
 							*it = reader->trim(*it);
-
-							cout << *it << endl;
 
 							if (regex_match(*it, REGEX_ADDR_MODE_MEM_DIR) ||
 								regex_match(*it, REGEX_ADDR_MODE_REG_IND_DISP) ||
@@ -744,7 +735,7 @@ bool Assembler::secondPass() {
 
 	while (1) {
 		cout << "==================================================" << endl;
-
+		
 		str = reader->readNextLine();
 
 		if (str.empty()) {
@@ -759,10 +750,10 @@ bool Assembler::secondPass() {
 
 		string word = reader->getFirstWord(str);
 		
-		bool error = false;
+
 
 		if (!word.compare(".end")) {
-			cout << "First Pass finised. End of assembler file." << endl;
+			cout << "Second Pass finised. End of assembler file." << endl;
 			break;
 		}
 
@@ -824,7 +815,6 @@ bool Assembler::secondPass() {
 								
 								currentSection->incrementLocationCounterBy(dataSize * firstArgumentNumber);
 
-								cout << firstArgument << " " << secondArgument << " " << thirdArgument << endl;  
 							} else {
 								const string str = *it;
 								string symbol;
@@ -958,7 +948,7 @@ bool Assembler::secondPass() {
 						string secondArgument = reader->trim(arguments.at(1));
 
 						if (regex_match(secondArgument, REGEX_ADDR_MODE_MEM_DIR)) {
-							machineCode = createCodeMemoryDirect(secondArgument, instructionCode, 0);
+							machineCode = (firstDoubleWord << 32) | createCodeMemoryDirect(secondArgument, instructionCode, 0);
 							
 							string hexCode = longlongToHexString(machineCode, 8);
 							
@@ -988,7 +978,7 @@ bool Assembler::secondPass() {
 							currentSection->incrementLocationCounterBy(8);
 						}
 						else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
-							machineCode = createCodePCRelative(secondArgument, instructionCode, 0);
+							machineCode = (firstDoubleWord << 32) | createCodePCRelative(secondArgument, instructionCode, 0);
 							
 							string hexCode = longlongToHexString(machineCode, 8);
 							
@@ -1041,7 +1031,7 @@ bool Assembler::secondPass() {
 					
 					if (!instruction.compare("LOAD")) {
 						if (regex_match(secondArgument, REGEX_ADDR_MODE_IMMEDIATE)) {
-							machineCode = createCodeImmediate(secondArgument, instructionCode, type);
+							machineCode = (firstDoubleWord << 32) | createCodeImmediate(secondArgument, instructionCode, type);
 								
 							string hexCode = longlongToHexString(machineCode, 8);
 							
@@ -1052,7 +1042,7 @@ bool Assembler::secondPass() {
 					}
 					
 					if (regex_match(secondArgument, REGEX_ADDR_MODE_MEM_DIR)) {
-						machineCode = createCodeMemoryDirect(secondArgument, instructionCode, 0);
+						machineCode = (firstDoubleWord << 32) | createCodeMemoryDirect(secondArgument, instructionCode, 0);
 						
 						string hexCode = longlongToHexString(machineCode, 8);
 						
@@ -1082,7 +1072,7 @@ bool Assembler::secondPass() {
 						currentSection->incrementLocationCounterBy(8);
 					}
 					else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
-						machineCode = createCodePCRelative(secondArgument, instructionCode, 0);
+						machineCode = (firstDoubleWord << 32) | createCodePCRelative(secondArgument, instructionCode, 0);
 						
 						string hexCode = longlongToHexString(machineCode, 8);
 						
@@ -1147,8 +1137,6 @@ bool Assembler::secondPass() {
 			}
 
 			currentSection->setFlags(flags);
-
-			cout << currentSection->getName() << endl;
 		}
 		else if (reader->isOrgDirective(word)) {
 			word = reader->getFirstWord(str);
@@ -1176,6 +1164,12 @@ bool Assembler::secondPass() {
 		SectionContent sec = sectionArray[i]->getContent();
 		sec.writeInFile(sectionArray[i]->getName(), "izlaz.txt");
 	}
+
+	ofstream file;
+	
+	file.open("izlaz.txt", std::ios::app);
+
+	file << "#end" << endl;
 
 	return true;
 }

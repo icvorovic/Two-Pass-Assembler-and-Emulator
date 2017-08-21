@@ -80,6 +80,11 @@ const int REG1_OFFSET = 11;
 const int REG2_OFFSET = 6;
 const int TYPE_OFFSET = 3;
 
+const int OPCODE_MASK = 0xFF;
+const int ADDR_MODE_MASK = 0x7;
+const int REG_MASK = 0x1F;
+const int TYPE_MASK = 0x7;
+
 extern map<string, int> registerCodes;
 
 #endif
