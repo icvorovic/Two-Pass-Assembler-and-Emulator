@@ -1,0 +1,2 @@
+g++ --std=c++11 -I../../assembler/src/ ../../assembler/src/Reader.cpp ../../assembler/src/SymbolTable.cpp ../../assembler/src/RelocationTable.cpp ../../assembler/src/RelocationTableEntry.cpp ../../assembler/src/Constants.cpp ../../assembler/src/Constants.h ../../assembler/src/Utility.cpp ../../assembler/src/SymbolTableEntry.cpp ../../assembler/src/Symbol.cpp ../../assembler/src/Section.cpp ../../assembler/src/SectionContent.cpp  -g ./*.h ./*.cpp -o emulator
+

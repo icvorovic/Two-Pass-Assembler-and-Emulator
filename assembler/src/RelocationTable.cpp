@@ -17,6 +17,10 @@ void RelocationTable::addRelocationRecord(RelocationTableEntry relocationRecord)
 void RelocationTable::writeToFile(string sectionName, string name) {
 	ofstream file;
 	
+	if (relocationTableList.size() == 0) {
+		return;
+	}
+
 	file.open(name, std::ios::app);
 
 	file << "#rel" + sectionName <<endl;

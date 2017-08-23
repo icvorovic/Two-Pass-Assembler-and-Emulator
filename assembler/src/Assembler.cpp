@@ -661,11 +661,21 @@ bool Assembler::firstPass() {
 				else if (reader->isAritmeticLogicInstruction(instruction)) {
 					incrementer = 4;
 
-					if (argumentsNumber != 3) {
-						error = true;
-						errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 3 argument.";
-						
-						return !error;
+					if (instruction == "NOT") {
+						if (argumentsNumber != 2) {
+							error = true;
+							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 2 argument.";
+							
+							return !error;
+						}
+					}
+					else {
+						if (argumentsNumber != 3) {
+							error = true;
+							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 3 argument.";
+							
+							return !error;
+						}
 					}
 
 					for (vector<string>::iterator it = arguments.begin(); it != arguments.end(); ++it) {
@@ -765,7 +775,7 @@ bool Assembler::secondPass() {
 
 				if (symbol != nullptr) {
 					symbol->setValue(currentSection->getStartAddress() + currentSection->getLocationCounter());
-					symbol->setSectionOffset(symbol->getValue());
+					symbol->setSectionOffset(symbol->getValue() - currentSection->getStartAddress());
 				}
 
 				if (!nextWord.empty()) {

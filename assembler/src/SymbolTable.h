@@ -2,7 +2,10 @@
 #define _SYMBOL_TABLE_H_
 
 #include <list>
+#include <vector>
+#include "Symbol.h"
 #include "SymbolTableEntry.h"
+#include "Section.h"
 
 using namespace std;
 
@@ -22,6 +25,9 @@ public:
 
 	//	Find symbol by name
 	SymbolTableEntry* findSymbolByName(string symbolName);
+
+	//	Get section symbols
+	vector<Symbol*> getSectionSymbols(Section *section);
 private:
 	list<SymbolTableEntry*> symbolTableList;
 };

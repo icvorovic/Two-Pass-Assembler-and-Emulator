@@ -11,11 +11,8 @@
 using namespace std;
 
 #define MAX_MEMORY_SIZE 67108864   //  64MB
-
-class Reader;
-class RelocationTable;
-class Section;
-class SymbolTable;
+#define PC 0x11     //  PC register index
+#define SP 0x10     //  SP register index
 
 class Emulator {
 public:
@@ -48,20 +45,42 @@ public:
 
     //  Fill memory with section byte content
     bool fillMemory();
+
+    //  Update section symbol values
+    void updateSectionSymbolValues(Section *section);
+
+    //  Check sections intersection
+    bool isSectionsIntersect();
+
+    //  Get error description
+    string getErrorDescription();
+
+    //  Execute emulator memory content
+    bool execute();
+
+    //  Read double word from PC address
+    long readDoubleWord();
+
+    //  Push register with index
+    void push(unsigned int R0Index);
+    
+    //  Pop register with index
+    long pop();
 private:
-    unsigned long REGISTER[16];
-    unsigned long PC;
-    unsigned long SP;
+    long REGISTER[18] = {};
 
-    unsigned long doubleWord;
+    long doubleWord;
 
-    char MEMORY[MAX_MEMORY_SIZE];
+    unsigned char MEMORY[MAX_MEMORY_SIZE];
 
     Reader *reader;
     SymbolTable *symbolTable;
     vector<Section*> sectionArray;
 
     Section* currentSection;
+
+    string errorDescription;
+    bool error = false;
 };
 
 #endif

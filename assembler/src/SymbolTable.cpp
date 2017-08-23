@@ -40,3 +40,17 @@ SymbolTableEntry* SymbolTable::findSymbolByName(string symbolName) {
 
 	return nullptr;
 }
+
+vector<Symbol*> SymbolTable::getSectionSymbols(Section *section) {
+	unsigned int orderNumber = section->getOrderNumber();
+
+	vector<Symbol*> result;
+
+	for (list<SymbolTableEntry*>::iterator it = symbolTableList.begin(); it != symbolTableList.end(); ++it) {
+		if ((*it)->getSectionNumber() == orderNumber && (*it) != section) {
+			result.push_back((Symbol*)(*it));
+		}
+	}
+
+	return result;
+}
