@@ -14,7 +14,7 @@ vector<regex> sections({
 	regex("\\.bss(\\.(0|[1-9][0-9]*)){0,1}")
 });
 
-static bool initializeInstuctionsMap(map<string, int> &instructions) {
+static bool initializeInstuctionsMap(map<string, unsigned long> &instructions) {
 	//	Control flow operations
 	instructions["INT"] = 0x00;
 	instructions["RET"] = 0x01;
@@ -59,7 +59,7 @@ static bool initializeInstuctionsMap(map<string, int> &instructions) {
 	return true;
 }
 
-map<string, int> instructions;
+map<string, unsigned long> instructions;
 bool initResult = initializeInstuctionsMap(instructions);
 
 static bool initializeRegisterCodesMap(map<string, int> &registerCodes) {

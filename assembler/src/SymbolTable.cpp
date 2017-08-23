@@ -54,3 +54,12 @@ vector<Symbol*> SymbolTable::getSectionSymbols(Section *section) {
 
 	return result;
 }
+
+SymbolTableEntry* SymbolTable::findSymbolByOrderNumber(unsigned int orderNumber) {
+	for (list<SymbolTableEntry*>::iterator it = symbolTableList.begin(); it != symbolTableList.end(); ++it) {
+		if ((*it)->getOrderNumber() == orderNumber) {
+			return *it;
+		}
+	}
+	return nullptr;
+}

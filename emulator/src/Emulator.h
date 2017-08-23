@@ -58,8 +58,41 @@ public:
     //  Execute emulator memory content
     bool execute();
 
+    //  Read by type
+    long read(unsigned int address, unsigned int type);
+
     //  Read double word from PC address
     long readDoubleWord();
+
+    //  Read double word from address
+    long readDoubleWord(unsigned int address);
+
+    //  Read unsigned word from address;
+    long readUnsignedWord(unsigned int address);
+
+    //  Read signed word from address
+    long readSignedWord(unsigned int address);
+
+    //  Read unsigned byte from address
+    long readUnsignedByte(unsigned int address);
+
+    //  Read signed byte from address
+    long readSignedByte(unsigned int address);
+
+    //  Write by type
+    void write(int doubleWord, unsigned int address, unsigned int type);
+
+    //  Write double word to address
+    void writeDoubleWord(int doubleWord, unsigned int address);
+
+    //  Write word to address
+    void writeWord(int doubleWord, unsigned int address);
+
+    //  Write byte to address
+    void writeByte(int doubleWord, unsigned int address);
+
+    //  Correct relocation memory location
+    void correctRelocationMemory();
 
     //  Push register with index
     void push(unsigned int R0Index);

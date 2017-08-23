@@ -21,6 +21,9 @@ public:
 	//	Write relocation table in file
 	void writeToFile(string sectionName, string name);
 
+	//	Get relocation table list
+	list<RelocationTableEntry> getRelocationList();
+
 private:
 	list<RelocationTableEntry> relocationTableList;
 };

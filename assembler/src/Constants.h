@@ -34,7 +34,7 @@ const regex REGEX_CONST_EXPRESSION("([a-z|A-Z|_][a-zA-Z0-9_]*){0,1}([ ]*){0,1}([
 *	Array contains all section types used in assembly language.
 */
 extern vector<regex> sections;
-extern map<string, int> instructions;
+extern map<string, unsigned long> instructions;
 
 /*
 *	Array contains all mnenomincs used in assembly language.

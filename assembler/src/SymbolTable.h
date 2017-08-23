@@ -26,6 +26,9 @@ public:
 	//	Find symbol by name
 	SymbolTableEntry* findSymbolByName(string symbolName);
 
+	//	Find symbol by order number
+	SymbolTableEntry* findSymbolByOrderNumber(unsigned int orderNumber);
+
 	//	Get section symbols
 	vector<Symbol*> getSectionSymbols(Section *section);
 private:

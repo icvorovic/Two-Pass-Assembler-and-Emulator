@@ -31,3 +31,7 @@ void RelocationTable::writeToFile(string sectionName, string name) {
 
 	file.close();
 }
+
+list<RelocationTableEntry> RelocationTable::getRelocationList() {
+	return relocationTableList;
+}

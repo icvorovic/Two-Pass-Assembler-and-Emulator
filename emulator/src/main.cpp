@@ -11,6 +11,8 @@ int main() {
     emulator->readInputStructures();
     bool result = emulator->fillMemory();
 
+    emulator->correctRelocationMemory();
+
     result = emulator->execute();
 
     if (!result) {
