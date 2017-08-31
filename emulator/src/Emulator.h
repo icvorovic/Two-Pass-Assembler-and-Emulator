@@ -114,6 +114,7 @@ private:
 
     string errorDescription;
     bool error = false;
+    static bool finishExecution;
 };
 
 #endif

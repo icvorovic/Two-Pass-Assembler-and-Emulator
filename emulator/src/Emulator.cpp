@@ -9,6 +9,8 @@
 #include <sstream>
 #include <list>
 
+bool  Emulator::finishExecution = true;
+
 Emulator::Emulator(string inputFile) {
     reader = new Reader(inputFile);
 
@@ -495,9 +497,12 @@ void Emulator::correctRelocationMemory() {
 bool Emulator::execute() {
     Symbol* startSymbol = (Symbol*) symbolTable->findSymbolByName("_start");
 
+    Emulator::finishExecution = false;
+
     if (startSymbol == nullptr) {
         error = true;
         errorDescription = "Symbol \e[1m _start \e[0m is not defined.";
+        Emulator::finishExecution = true;
         return false;
     }
 
@@ -765,6 +770,8 @@ bool Emulator::execute() {
     for (int i = 0x100; i < 0x100 + 16; i++) {
         cout << "MEMORY 0x" << std::hex << i <<  "=" << std::hex << (unsigned) MEMORY[i] << endl;
     }
+
+    Emulator::finishExecution = true;
 
     return true;
 }
