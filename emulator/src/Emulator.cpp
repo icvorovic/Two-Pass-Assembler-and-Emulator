@@ -4,12 +4,18 @@
 #include "Section.h"
 #include "Utility.h"
 #include "RelocationTableEntry.h"
-
+#include <thread>
 #include <iostream>
 #include <sstream>
 #include <list>
 
-bool  Emulator::finishExecution = true;
+
+atomic<bool> Emulator::finishExecution (false);
+atomic<bool> Emulator::isInterrupt (false);
+atomic<bool> Emulator::isTimerTick (false);
+atomic<bool> Emulator::isReadInput (true);
+atomic<bool> Emulator::isInputInterrupt (false);
+mutex Emulator::mtx;
 
 Emulator::Emulator(string inputFile) {
     reader = new Reader(inputFile);
@@ -170,10 +176,7 @@ void Emulator::write(const int doubleWordParam, unsigned int address, unsigned i
 }
 
 void Emulator::writeDoubleWord(const int doubleWordParam, unsigned int address) {
-    cout << "ADDR=" << std::hex << address << " VALUE=" << std::hex << (int)(doubleWordParam) << endl;
-
     for (int i = 0; i < 4; i++) {
-        cout << "WRITE MEMORY ADDRESS=0x" << std::hex << address << " VALUE=" << std::hex << (int)((doubleWordParam >> (8 * i)) & 0xFF) << endl;
         MEMORY[address++] = (char)((doubleWordParam >> (8 * i)) & 0xFF);
     }
 }
@@ -197,7 +200,7 @@ void Emulator::push(unsigned int R0Index) {
 long Emulator::pop() {
     long result = 0;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 3; i >= 0; i--) {
         result |= (MEMORY[REGISTER[SP]--] << (8 * i));
     }
 
@@ -218,9 +221,11 @@ bool Emulator::isSectionsIntersect() {
                 if ((*it) != (*it2)) {
                     unsigned long secondSectionSize = (*it2)->getSectionSize();
                     unsigned long secondStartAddress = (*it2)->getStartAddress();
-                
-                    if (((startAddress >= secondStartAddress) && (startAddress <= (secondStartAddress + secondSectionSize))) 
-                      || ((secondStartAddress >=  startAddress) && (secondStartAddress <= (startAddress + sectionSize)))) {
+                    
+                    string secondFlags = (*it2)->getFlags();
+
+                    if ((secondFlags.find_first_of("F") != string::npos) && (((startAddress >= secondStartAddress) && (startAddress <= (secondStartAddress + secondSectionSize))) 
+                      || ((secondStartAddress >=  startAddress) && (secondStartAddress <= (startAddress + sectionSize))))) {
                         error = true;
                         return true;
                     }
@@ -269,8 +274,6 @@ bool Emulator::readInputStructures() {
                 symbol->setFlag((arguments.at(5)).at(0));
                 
                 symbolTable->addSymbol(symbol);
-
-                cout << "SYM" << endl;
             } 
 
             if (arguments.at(0) == "SEG"){
@@ -288,7 +291,6 @@ bool Emulator::readInputStructures() {
                 symbolTable->addSymbol(section);
                 sectionArray.push_back(section);
                                 
-                cout << "SEG" << endl;
             }
          }
     }
@@ -296,7 +298,6 @@ bool Emulator::readInputStructures() {
     symbolTable->writeToFile("izlaz.txt");
 
     while (line.compare("#end")) {
-        cout << "LINE : " << line << endl;
 
         if (line.substr(0, relocationTablePrefix.size()) == relocationTablePrefix) {
             string sectionName = line.substr(relocationTablePrefix.size(), line.size() - relocationTablePrefix.size());
@@ -310,7 +311,6 @@ bool Emulator::readInputStructures() {
             isRelocationTable = true;
             isSectionContent = false;
 
-            cout << "REL" <<  sectionName << endl;
         }
         else if (line.substr(0, sectionContentPrefix.size()) == sectionContentPrefix) {
             string sectionName = line.substr(1, line.size() - 2);
@@ -324,7 +324,6 @@ bool Emulator::readInputStructures() {
             isRelocationTable = false;
             isSectionContent = true;
 
-            cout << "SECTION" << sectionName << endl;
         }
 
         if (isRelocationTable) {
@@ -423,8 +422,6 @@ bool Emulator::fillMemory() {
             
             unsigned char value = stoi(byteRepresentation, nullptr, 0);
 
-            cout << "FILL ADDRESS=0x" << std::hex << fillStartAddress << " WITH VALUE=0x" << std::hex << (int)value << endl;
-
             MEMORY[fillStartAddress++] = value;
 
             i += 2;
@@ -477,18 +474,8 @@ void Emulator::correctRelocationMemory() {
 
                 long newValue = oldValue + sectionAddress;
 
-                cout << "ADDRESS=0x" << std::hex << address << " VALUE=0x" << std::hex << (int)(newValue) << endl;               
-
                 writeDoubleWord(newValue, address);
 
-                cout << "OLD_VALUE=0x" << std::hex << oldValue << " NEW_VALUE=0x" << std::hex << newValue << endl; 
-
-                cout << "CORRECT ADDRESS=0x" << std::hex << address << " WITH VALUE=0x" << std::hex << (int)(newValue & 0xFF) << endl;
-                cout << "CORRECT ADDRESS=0x" << std::hex << address + 1 << " WITH VALUE=0x" << std::hex << (int)((newValue >> 8) & 0xFF) << endl;
-                cout << "CORRECT ADDRESS=0x" << std::hex << address + 2 << " WITH VALUE=0x" << std::hex << (int)((newValue >> 16) & 0xFF) << endl;
-                cout << "CORRECT ADDRESS=0x" << std::hex << address + 3 << " WITH VALUE=0x" << std::hex << (int)((newValue >> 24) & 0xFF) << endl;
-               
-                
             }
         }
 	}
@@ -509,6 +496,8 @@ bool Emulator::execute() {
     REGISTER[PC] = startSymbol->getValue();
 
     cout << "EXECUTE STARTED... " << endl;
+
+    bool isPreviousRTI = false;
 
     while (true) {
 
@@ -532,10 +521,12 @@ bool Emulator::execute() {
             }
         }
 
-        cout << "0x" << std::hex << doubleWord << endl;
-        cout << "0x" << std::hex << instruction << endl;
-
         //  Control flow instructions
+
+
+        Emulator::mtx.lock();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));      
 
         if ((instruction >= instructions["INT"]) && (instruction <= instructions["JLEZ"])) {
             if ((instruction >= instructions["INT"]) && (instruction <= instructions["CALL"])) {
@@ -543,12 +534,19 @@ bool Emulator::execute() {
                     /*
                         BROJ PREKIDA JE U REGISTRU R0
                     */
+
+                    //while (Emulator::isInterrupt);
+
                     unsigned int interruptNumber = REGISTER[0];
 
                     if (interruptNumber == 0) {
                         cout << "EXECUTION FINISHED. " << endl;
                         break;
                     }
+
+                    push(PC);                    
+                    REGISTER[PC] = readDoubleWord(4 * interruptNumber);
+                    Emulator::isInterrupt = true;
                 }
                 else if (instruction == instructions["JMP"] || instruction == instructions["CALL"]) {
                     if (instruction == instructions["CALL"]) {
@@ -576,6 +574,8 @@ bool Emulator::execute() {
                 }
                 else if (instruction == instructions["RET"]) {
                     REGISTER[PC] = pop();
+                    isPreviousRTI = true;
+                    Emulator::isInterrupt = false;                    
                 }
             }
 
@@ -591,10 +591,10 @@ bool Emulator::execute() {
                 }
 
                 if (addressMode == REG_IND_DISP_ADDR_MODE) {
-                    if (R0Index != PC) {
+                    if (R1Index != PC) {
                         address = REGISTER[R0Index] + readDoubleWord();
                     } else {
-                        address = REGISTER[PC] + readDoubleWord() - 8;
+                        address = REGISTER[PC] + readDoubleWord();
                     }
                 }
 
@@ -616,7 +616,9 @@ bool Emulator::execute() {
                 else if (instruction == instructions["JLEZ"] && registerContent <= 0) {
                     REGISTER[PC] = address;
                 }
-            }   
+            }
+
+            cout << instructionString << endl;
         }
 
         //  Load/Store instructions
@@ -761,14 +763,30 @@ bool Emulator::execute() {
                 REGISTER[R0Index] = REGISTER[R1Index] >> REGISTER[R2Index];
             }
         }
-    }
 
-    for (int i = 0x20; i < 0x44; i++) {
-        cout << "MEMORY 0x" << std::hex << i <<  "=" << std::hex << (unsigned) MEMORY[i] << endl;
-    }
+       
+        if (!isPreviousRTI && !Emulator::isInterrupt) {
+                        
+            if (Emulator::isInputInterrupt) {
+                push(PC);
+                REGISTER[PC] = readDoubleWord(5 * 4);
+                Emulator::isInputInterrupt = false;
+            }
+            else if (Emulator::isTimerTick ) {
+                push(PC);
+                REGISTER[PC] = readDoubleWord(4 * 4);
+                Emulator::isTimerTick = false;
+            }
 
-    for (int i = 0x100; i < 0x100 + 16; i++) {
-        cout << "MEMORY 0x" << std::hex << i <<  "=" << std::hex << (unsigned) MEMORY[i] << endl;
+            Emulator::isInterrupt = true;
+        }  
+
+        if (isPreviousRTI) {
+            isPreviousRTI = false;
+        }
+
+        Emulator::mtx.unlock(); 
+
     }
 
     Emulator::finishExecution = true;

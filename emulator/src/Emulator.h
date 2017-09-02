@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <atomic>
+#include <mutex>
 #include "Reader.h"
 #include "RelocationTable.h"
 #include "Section.h"
@@ -99,6 +101,15 @@ public:
     
     //  Pop register with index
     long pop();
+
+public:
+    static atomic<bool> finishExecution;
+    static atomic<bool> isInterrupt;
+    static atomic<bool> isTimerTick;
+    static atomic<bool> isReadInput;
+    static atomic<bool> isInputInterrupt;
+
+    static mutex mtx;
 private:
     long REGISTER[18] = {};
 
@@ -114,7 +125,6 @@ private:
 
     string errorDescription;
     bool error = false;
-    static bool finishExecution;
 };
 
 #endif

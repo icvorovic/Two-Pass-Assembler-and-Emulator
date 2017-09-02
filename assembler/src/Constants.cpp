@@ -84,6 +84,7 @@ bool initResultReg = initializeRegisterCodesMap(registerCodes);
 vector<string> mnemonics({
 	"INT",
 	"RET",
+	"RTI",
 	"JMP",
 	"CALL",
 	"JZ",
@@ -121,6 +122,7 @@ vector<string> mnemonics({
 vector<string> controlFlowInstructions({
 	"INT",
 	"RET",
+	"RTI",
 	"JMP",
 	"CALL",
 	"JZ",

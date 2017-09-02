@@ -90,7 +90,12 @@ long long Assembler::calculateExpression(string symbol, string operation, string
 		secondDoubleWord = address - result;
 	}
 	else {
-		secondDoubleWord = address;
+		if (symbol.compare("")) {
+			secondDoubleWord = address;
+		}
+		else {
+			secondDoubleWord = result;
+		}
 	}
 
 	return secondDoubleWord;
@@ -140,7 +145,13 @@ unsigned long Assembler::createCodeRegisterIndirect(vector<string> arguments, in
 			registerOperand = match[1];
 
 		registerCode = registerCodes.at(registerOperand);
-		machineCode |= (registerCode << (REG1_OFFSET - 5 * i));
+
+		if (instructionCode == 0 || instructionCode == 2 || instructionCode == 3) { 
+			machineCode |= (registerCode << (REG0_OFFSET - 5 * i));
+		}
+		else {
+			machineCode |= (registerCode << (REG1_OFFSET - 5 * i));
+		}
 	}
 
 	machineCode |= (instructionCode << OPCODE_OFFSET);
@@ -209,6 +220,7 @@ unsigned long long Assembler::createCodeRegisterIndirectDisplacement(string argu
 	
 	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
 	firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
+	firstDoubleWord |= (type << TYPE_OFFSET);
 	
 	//	INT, JMP or CALL instructions (has only one argument)
 	if (codeInstruction == 0 || codeInstruction == 2 || codeInstruction == 3) {
@@ -269,6 +281,7 @@ unsigned long long Assembler::createCodeImmediate(string argument, int codeInstr
 	
 	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
 	firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
+	firstDoubleWord |= (type << TYPE_OFFSET);
 
 	machineCode |= secondDoubleWord;
 	machineCode |= (firstDoubleWord << 32);
@@ -322,6 +335,7 @@ unsigned long long Assembler::createCodeMemoryDirect(string argument, int codeIn
 	
 	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
 	firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
+	firstDoubleWord |= (type << TYPE_OFFSET);
 
 	machineCode |= secondDoubleWord;
 	machineCode |= (firstDoubleWord << 32);
@@ -389,6 +403,7 @@ unsigned long long Assembler::createCodePCRelative(string argument, int codeInst
 	firstDoubleWord |= (codeInstruction << OPCODE_OFFSET);
 	firstDoubleWord |= (addressModeCode << ADDR_MODE_OFFSET);
 	firstDoubleWord |= (registerCode << REG1_OFFSET);
+	firstDoubleWord |= (type << TYPE_OFFSET);
 	
 	secondDoubleWord = address;
 	
@@ -471,7 +486,7 @@ bool Assembler::firstPass() {
 				vector<string> arguments = reader->split(str, ',');
 
 				int argumentsNumber = arguments.size();
-				string instruction = word;
+				string instruction = reader->trim(word);
 
 				if (reader->isControlFlowInstruction(instruction)) {
 					cout << "CONTROL FLOW INSTRUCTION: " << word << endl;
@@ -482,17 +497,6 @@ bool Assembler::firstPass() {
 						if (argumentsNumber != 1) {
 							error = true;
 							errorDescription =  "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. INT excepts 1 argument.";
-							
-							return !error;
-						}
-					}
-
-					if (!instruction.compare("RTI") || !instruction.compare("RET")) {
-						incrementer = 4;
-						
-						if (argumentsNumber != 0) {
-							error = true;
-							errorDescription =  "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 0 argument.";
 							
 							return !error;
 						}
@@ -526,8 +530,10 @@ bool Assembler::firstPass() {
 						}
 					}
 
-					if (!instruction.compare("RET")) {
-						if (argumentsNumber != 0) {
+					if (!instruction.compare("RET") || !instruction.compare("RTI")) {
+						incrementer = 4;
+
+						if (argumentsNumber != 1 && arguments.at(0) != "") {
 							error = true;
 							errorDescription = "ERROR Line " + to_string(lineCounter) + ": Unexcepted arguments number. " + instruction + " excepts 0 argument.";
 							
@@ -1052,7 +1058,7 @@ bool Assembler::secondPass() {
 					}
 					
 					if (regex_match(secondArgument, REGEX_ADDR_MODE_MEM_DIR)) {
-						machineCode = (firstDoubleWord << 32) | createCodeMemoryDirect(secondArgument, instructionCode, 0);
+						machineCode = (firstDoubleWord << 32) | createCodeMemoryDirect(secondArgument, instructionCode, type);
 						
 						string hexCode = longlongToHexString(machineCode, 8);
 						
@@ -1082,7 +1088,7 @@ bool Assembler::secondPass() {
 						currentSection->incrementLocationCounterBy(8);
 					}
 					else if (regex_match(secondArgument, REGEX_ADDR_MODE_DOLLAR_PC)) {
-						machineCode = (firstDoubleWord << 32) | createCodePCRelative(secondArgument, instructionCode, 0);
+						machineCode = (firstDoubleWord << 32) | createCodePCRelative(secondArgument, instructionCode, type);
 						
 						string hexCode = longlongToHexString(machineCode, 8);
 						
